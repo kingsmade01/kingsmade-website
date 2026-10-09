@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KINGSMADE — Simple. Clean. Timeless.</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+  <a class="logo" href="#">KINGSMADE</a>
+  <button class="cart-btn" onclick="toggleCart()">Cart <span id="cartCount">0</span></button>
+</header>
+
+<main>
+<section class="hero">
+  <p class="eyebrow">EST. 2025</p>
+  <h1>SIMPLE. CLEAN. TIMELESS.</h1>
+  <p>Modern essentials by KINGSMADE.</p>
+  <a class="shop-btn" href="#shop">Shop collection</a>
+</section>
+
+<section id="shop" class="shop">
+  <div class="section-head">
+    <div><p class="eyebrow">KINGSMADE COLLECTION</p><h2>Shop</h2></div>
+  </div>
+  <div id="products" class="grid"></div>
+</section>
+</main>
+
+<aside id="cart" class="cart-panel">
+  <div class="cart-head"><h2>Your cart</h2><button onclick="toggleCart()">×</button></div>
+  <div id="cartItems"></div>
+  <div class="cart-total"><span>Total</span><strong id="cartTotal">₦0</strong></div>
+  <button class="checkout" onclick="checkout()">Proceed to checkout</button>
+</aside>
+<div id="overlay" class="overlay" onclick="toggleCart()"></div>
+
+<footer>
+  <strong>KINGSMADE</strong>
+  <p>SIMPLE / CLEAN / TIMELESS</p>
+  <small>© 2025 KINGSMADE. All rights reserved.</small>
+</footer>
+<script src="script.js"></script>
+</body>
+</html>
