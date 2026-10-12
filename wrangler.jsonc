@@ -6,6 +6,12 @@
   "assets": {
     "directory": ".",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kingsmade-store",
+      "database_id": "294851a1-7adf-48f0-a8a4-fce8b74ea7e9"
+    }
+  ]
 }
-
