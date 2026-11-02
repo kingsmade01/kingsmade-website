@@ -3,44 +3,205 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>KINGSMADE — Simple. Clean. Timeless.</title>
+<meta name="theme-color" content="#050505">
+<meta name="description" content="Discover the KINGSMADE collection. Premium everyday fashion and modern essentials.">
+<title>KINGSMADE | Official Store</title>
 <link rel="stylesheet" href="style.css">
+
+<style>
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .38;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hero.is-hidden {
+  display: none !important;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+</style>
 </head>
+
 <body>
+
 <header class="header">
-  <a class="logo" href="#">KINGSMADE</a>
-  <button class="cart-btn" onclick="toggleCart()">Cart <span id="cartCount">0</span></button>
+  <a class="logo" href="/">KINGSMADE</a>
+  <button class="cart-btn" onclick="toggleCart()">
+    Cart <span id="cartCount">0</span>
+  </button>
 </header>
 
 <main>
-<section class="hero">
-  <p class="eyebrow">EST. 2025</p>
-  <h1>SIMPLE. CLEAN. TIMELESS.</h1>
-  <p>Modern essentials by KINGSMADE.</p>
-  <a class="shop-btn" href="#shop">Shop collection</a>
-</section>
 
-<section id="shop" class="shop">
-  <div class="section-head">
-    <div><p class="eyebrow">KINGSMADE COLLECTION</p><h2>Shop</h2></div>
-  </div>
-  <div id="products" class="grid"></div>
-</section>
+  <!-- HOMEPAGE HERO: CONTROLLED BY ADMIN DASHBOARD -->
+  <section class="hero" id="homepageHero">
+
+    <img
+      id="heroBackground"
+      class="hero-image"
+      alt=""
+      hidden
+    >
+
+    <div class="hero-content">
+      <p class="eyebrow" id="heroEyebrow">EST. 2025</p>
+
+      <h1 id="heroHeading">KINGSMADE COLLECTION</h1>
+
+      <p id="heroSubtitle">
+        Modern essentials by KINGSMADE.
+      </p>
+
+      <a class="shop-btn" id="heroButton" href="#shop">
+        SHOP COLLECTION
+      </a>
+    </div>
+
+  </section>
+
+  <!-- SHOP -->
+  <section id="shop" class="shop">
+
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">KINGSMADE COLLECTION</p>
+        <h2>Shop</h2>
+      </div>
+    </div>
+
+    <div id="products" class="grid"></div>
+
+  </section>
+
 </main>
 
+<!-- SHOPPING CART -->
 <aside id="cart" class="cart-panel">
-  <div class="cart-head"><h2>Your cart</h2><button onclick="toggleCart()">×</button></div>
-  <div id="cartItems"></div>
-  <div class="cart-total"><span>Total</span><strong id="cartTotal">₦0</strong></div>
-  <button class="checkout" onclick="checkout()">Proceed to checkout</button>
-</aside>
-<div id="overlay" class="overlay" onclick="toggleCart()"></div>
 
+  <div class="cart-head">
+    <h2>Your cart</h2>
+    <button onclick="toggleCart()">×</button>
+  </div>
+
+  <div id="cartItems"></div>
+
+  <div class="cart-total">
+    <span>Total</span>
+    <strong id="cartTotal">₦0</strong>
+  </div>
+
+  <button class="checkout" onclick="checkout()">
+    Proceed to checkout
+  </button>
+
+</aside>
+
+<div
+  id="overlay"
+  class="overlay"
+  onclick="toggleCart()">
+</div>
+
+<!-- FOOTER -->
 <footer>
   <strong>KINGSMADE</strong>
-  <p>SIMPLE / CLEAN / TIMELESS</p>
-  <small>© 2025 KINGSMADE. All rights reserved.</small>
+  <p>PREMIUM EVERYDAY ESSENTIALS</p>
+  <small>© 2026 KINGSMADE. All rights reserved.</small>
 </footer>
+
+<!-- EXISTING STORE JAVASCRIPT -->
 <script src="script.js"></script>
+
+<!-- LOAD HERO SETTINGS FROM ADMIN DASHBOARD -->
+<script>
+async function loadKingsmadeHero() {
+  const hero = document.getElementById("homepageHero");
+
+  try {
+    const response = await fetch("/api/hero", {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const settings = data.hero;
+
+    if (!settings) return;
+
+    // Show or hide the hero section
+    hero.classList.toggle(
+      "is-hidden",
+      Number(settings.is_visible) !== 1
+    );
+
+    // Main heading
+    if (settings.heading) {
+      document.getElementById("heroHeading").textContent =
+        settings.heading;
+    }
+
+    // Subtitle
+    document.getElementById("heroSubtitle").textContent =
+      settings.subtitle || "";
+
+    // Button
+    const button = document.getElementById("heroButton");
+
+    button.textContent =
+      settings.button_text || "SHOP COLLECTION";
+
+    // Only allow safe destination URLs
+    const destination = settings.button_url || "#shop";
+
+    if (
+      destination.startsWith("/") ||
+      destination.startsWith("#") ||
+      /^https:\/\//i.test(destination)
+    ) {
+      button.href = destination;
+    } else {
+      button.href = "#shop";
+    }
+
+    // Background image
+    const image = document.getElementById("heroBackground");
+    const imageUrl = settings.image_url || "";
+
+    if (
+      imageUrl.startsWith("/") ||
+      /^https:\/\//i.test(imageUrl)
+    ) {
+      image.src = imageUrl;
+      image.hidden = false;
+    } else {
+      image.hidden = true;
+      image.removeAttribute("src");
+    }
+
+  } catch (error) {
+    console.error("KINGSMADE hero loading error:", error);
+  }
+}
+
+loadKingsmadeHero();
+</script>
+
 </body>
 </html>
