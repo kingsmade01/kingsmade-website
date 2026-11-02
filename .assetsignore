@@ -1,6 +1,21 @@
-
+# Worker code
 worker.js
+
+# Wrangler configuration
+wrangler.json
 wrangler.jsonc
-KINGSMADE_website.zip
+wrangler.toml
+
+# Secrets
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+
+# Development folders
 .git/
 .github/
+node_modules/
+
+# Website backup
+KINGSMADE_website.zip
