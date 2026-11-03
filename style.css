@@ -653,3 +653,6 @@ button { cursor: pointer; }
   .product-image { height: 180px; }
   .collection-heading h2 { font-size: 32px; }
 }
+.filter-panel.filters-hidden {
+  display: none;
+}
