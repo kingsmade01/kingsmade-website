@@ -1,46 +1,215 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>KINGSMADE — Simple. Clean. Timeless.</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f1e9">
+  <meta name="description" content="KINGSMADE — Premium fashion, accessories and craftsmanship. Craft for Kings.">
+  <title>KINGSMADE | Craft for Kings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
 <header class="header">
-  <a class="logo" href="#">KINGSMADE</a>
-  <button class="cart-btn" onclick="toggleCart()">Cart <span id="cartCount">0</span></button>
+  <a href="#" class="wordmark">KINGSMADE</a>
+
+  <nav class="desktop-nav">
+    <a href="#collection">COLLECTION</a>
+    <a href="#collection" data-category-link="Clothing">CLOTHING</a>
+    <a href="#collection" data-category-link="Footwear">FOOTWEAR</a>
+    <a href="#collection" data-category-link="Accessories">ACCESSORIES</a>
+    <a href="#about">OUR HOUSE</a>
+  </nav>
+
+  <div class="header-actions">
+    <button class="icon-btn" id="searchToggle" aria-label="Search">
+      <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="7"></circle><path d="m16 16 5 5"></path></svg>
+    </button>
+
+    <button class="cart-trigger" id="cartOpen">
+      BAG <span id="cartCount">0</span>
+    </button>
+
+    <button class="mobile-menu-btn" id="mobileMenu" aria-label="Open menu">☰</button>
+  </div>
 </header>
 
+<div class="mobile-nav" id="mobileNav">
+  <a href="#collection">Collection</a>
+  <a href="#collection" data-category-link="Clothing">Clothing</a>
+  <a href="#collection" data-category-link="Footwear">Footwear</a>
+  <a href="#collection" data-category-link="Accessories">Accessories</a>
+  <a href="#about">Our House</a>
+</div>
+
 <main>
+
 <section class="hero">
-  <p class="eyebrow">EST. 2025</p>
-  <h1>SIMPLE. CLEAN. TIMELESS.</h1>
-  <p>Modern essentials by KINGSMADE.</p>
-  <a class="shop-btn" href="#shop">Shop collection</a>
+  <div class="hero-image"></div>
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    <div class="hero-copy">
+      <p class="hero-overline">AN EXPRESSION OF EXCELLENCE</p>
+      <h1>KINGSMADE</h1>
+      <p class="hero-slogan">CRAFT FOR KINGS.</p>
+      <p class="hero-description">
+        A distinct expression of style, character and craftsmanship.
+      </p>
+      <a href="#collection" class="hero-button">DISCOVER THE COLLECTION <span>→</span></a>
+    </div>
+
+    <div class="monogram" aria-hidden="true">KM</div>
+  </div>
+
+  <div class="hero-bottom">
+    <span>EST. 2025</span>
+    <span>CRAFTED WITH PURPOSE</span>
+  </div>
 </section>
 
-<section id="shop" class="shop">
-  <div class="section-head">
-    <div><p class="eyebrow">KINGSMADE COLLECTION</p><h2>Shop</h2></div>
-  </div>
-  <div id="products" class="grid"></div>
+<section class="intro" id="about">
+  <p class="eyebrow">THE KINGSMADE PHILOSOPHY</p>
+  <h2>Style is a statement.<br><em>Excellence is a standard.</em></h2>
+  <p>Discover a world of considered design, distinctive essentials and timeless expression.</p>
 </section>
+
+<section class="collection" id="collection">
+
+  <div class="collection-heading">
+    <div>
+      <p class="eyebrow">CURATED FOR THE DISTINGUISHED</p>
+      <h2>THE COLLECTION</h2>
+    </div>
+
+    <div class="collection-tools">
+      <div class="search-box" id="searchBox">
+        <input id="productSearch" type="search" placeholder="Search the collection..." aria-label="Search products">
+        <span>⌕</span>
+      </div>
+
+      <button class="menu-button" id="filterToggle">MENU <span>☰</span></button>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filterPanel">
+    <button class="filter active" data-filter="All">ALL</button>
+    <button class="filter" data-filter="Clothing">CLOTHING</button>
+    <button class="filter" data-filter="Footwear">FOOTWEAR</button>
+    <button class="filter" data-filter="Accessories">ACCESSORIES</button>
+    <button class="filter" data-filter="Materials">MATERIALS</button>
+    <button class="filter" data-filter="Men">MEN</button>
+    <button class="filter" data-filter="Women">WOMEN</button>
+    <button class="filter" data-filter="Children">CHILDREN</button>
+  </div>
+
+  <div class="collection-meta">
+    <span id="resultCount">OUR SELECTION</span>
+    <label>
+      SORT:
+      <select id="sortProducts">
+        <option value="newest">Newest</option>
+        <option value="low">Price: Low to high</option>
+        <option value="high">Price: High to low</option>
+        <option value="az">Name: A–Z</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="product-grid" id="products">
+    <div class="loading">DISCOVERING THE COLLECTION...</div>
+  </div>
+
+  <p class="empty-state" id="emptyState" hidden>
+    No products found. Try another search.
+  </p>
+</section>
+
+<section class="brand-banner">
+  <div class="brand-banner-content">
+    <p class="eyebrow">THE ART OF DRESSING WELL</p>
+    <h2>Beyond fashion.<br><em>A way of life.</em></h2>
+    <a href="#collection" class="light-button">EXPLORE KINGSMADE →</a>
+  </div>
+</section>
+
 </main>
 
-<aside id="cart" class="cart-panel">
-  <div class="cart-head"><h2>Your cart</h2><button onclick="toggleCart()">×</button></div>
-  <div id="cartItems"></div>
-  <div class="cart-total"><span>Total</span><strong id="cartTotal">₦0</strong></div>
-  <button class="checkout" onclick="checkout()">Proceed to checkout</button>
-</aside>
-<div id="overlay" class="overlay" onclick="toggleCart()"></div>
+<footer class="footer">
+  <div class="footer-main">
+    <div>
+      <a href="#" class="footer-logo">KINGSMADE</a>
+      <p>CRAFT FOR KINGS.</p>
+      <p class="footer-note">A distinct expression of timeless style.</p>
+    </div>
 
-<footer>
-  <strong>KINGSMADE</strong>
-  <p>SIMPLE / CLEAN / TIMELESS</p>
-  <small>© 2025 KINGSMADE. All rights reserved.</small>
+    <div>
+      <h3>EXPLORE</h3>
+      <a href="#collection">Collection</a>
+      <a href="#collection">Accessories</a>
+      <a href="#collection">Footwear</a>
+    </div>
+
+    <div>
+      <h3>CONTACT</h3>
+      <a href="mailto:kingsmade01@gmail.com">Email KINGSMADE</a>
+      <a href="#about">Our House</a>
+    </div>
+
+    <div>
+      <h3>CURRENCY</h3>
+      <select id="currencySelect" aria-label="Select currency">
+        <option value="NGN">NGN ₦</option>
+        <option value="USD">USD $</option>
+        <option value="GBP">GBP £</option>
+        <option value="EUR">EUR €</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <span>© 2026 KINGSMADE. ALL RIGHTS RESERVED.</span>
+
+    <div class="social-links">
+      <a id="instagramLink" href="#" target="_blank" rel="noopener">INSTAGRAM</a>
+      <a id="facebookLink" href="#" target="_blank" rel="noopener">FACEBOOK</a>
+      <a id="xLink" href="#" target="_blank" rel="noopener">X</a>
+    </div>
+  </div>
 </footer>
+
+<!-- SHOPPING CART -->
+<div class="cart-overlay" id="cartOverlay"></div>
+
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h2>YOUR BAG</h2>
+    <button id="cartClose" aria-label="Close cart">×</button>
+  </div>
+
+  <div id="cartItems" class="cart-items">
+    <p>Your bag is empty.</p>
+  </div>
+
+  <div class="cart-summary">
+    <div><span>Subtotal</span><strong id="cartSubtotal">₦0</strong></div>
+    <p>Delivery charges are calculated at checkout.</p>
+    <button class="checkout-button" id="checkoutButton">PROCEED TO CHECKOUT</button>
+  </div>
+</aside>
+
+<!-- PRODUCT DETAILS -->
+<div class="modal-overlay" id="productModal">
+  <div class="product-modal">
+    <button class="modal-close" id="modalClose">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>
