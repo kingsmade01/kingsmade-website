@@ -1,207 +1,208 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#050505">
-<meta name="description" content="Discover the KINGSMADE collection. Premium everyday fashion and modern essentials.">
-<title>KINGSMADE | Official Store</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="Discover the KINGSMADE collection. Premium fashion and modern essentials.">
+  <title>KINGSMADE | Official Store</title>
+  <link rel="stylesheet" href="/style.css">
 
-<style>
-.hero {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
+  <style>
+    .hero {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
 
-.hero-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: .38;
-  z-index: -1;
-  pointer-events: none;
-}
+    .hero-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: .38;
+      z-index: -1;
+      pointer-events: none;
+    }
 
-.hero.is-hidden {
-  display: none !important;
-}
+    .hero.is-hidden {
+      display: none !important;
+    }
 
-.hero-content {
-  position: relative;
-  z-index: 1;
-}
-</style>
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
 </head>
 
 <body>
+  <header class="header">
+    <a class="logo" href="/">KINGSMADE</a>
+    <button class="cart-btn" type="button" onclick="toggleCart()">
+      Cart <span id="cartCount">0</span>
+    </button>
+  </header>
 
-<header class="header">
-  <a class="logo" href="/">KINGSMADE</a>
-  <button class="cart-btn" onclick="toggleCart()">
-    Cart <span id="cartCount">0</span>
-  </button>
-</header>
+  <main>
+    <section class="hero" id="homepageHero">
+      <img
+        id="heroBackground"
+        class="hero-image"
+        alt=""
+        hidden
+      >
 
-<main>
+      <div class="hero-content">
+        <p class="eyebrow" id="heroEyebrow">EST. 2025</p>
+        <h1 id="heroHeading">KINGSMADE COLLECTION</h1>
+        <p id="heroSubtitle">Modern essentials by KINGSMADE.</p>
 
-  <!-- HOMEPAGE HERO: CONTROLLED BY ADMIN DASHBOARD -->
-  <section class="hero" id="homepageHero">
-
-    <img
-      id="heroBackground"
-      class="hero-image"
-      alt=""
-      hidden
-    >
-
-    <div class="hero-content">
-      <p class="eyebrow" id="heroEyebrow">EST. 2025</p>
-
-      <h1 id="heroHeading">KINGSMADE COLLECTION</h1>
-
-      <p id="heroSubtitle">
-        Modern essentials by KINGSMADE.
-      </p>
-
-      <a class="shop-btn" id="heroButton" href="#shop">
-        SHOP COLLECTION
-      </a>
-    </div>
-
-  </section>
-
-  <!-- SHOP -->
-  <section id="shop" class="shop">
-
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">KINGSMADE COLLECTION</p>
-        <h2>Shop</h2>
+        <a class="shop-btn" id="heroButton" href="#shop">
+          SHOP COLLECTION
+        </a>
       </div>
+    </section>
+
+    <section id="shop" class="shop">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">KINGSMADE COLLECTION</p>
+          <h2>Shop</h2>
+        </div>
+      </div>
+
+      <div id="products" class="grid"></div>
+    </section>
+  </main>
+
+  <aside id="cart" class="cart-panel" aria-label="Shopping cart">
+    <div class="cart-head">
+      <h2>Your cart</h2>
+      <button type="button" aria-label="Close cart" onclick="toggleCart(false)">×</button>
     </div>
 
-    <div id="products" class="grid"></div>
+    <div id="cartItems"></div>
 
-  </section>
+    <div class="cart-total">
+      <span>Total</span>
+      <strong id="cartTotal">₦0</strong>
+    </div>
 
-</main>
+    <button class="checkout" type="button" onclick="checkout()">
+      Proceed to checkout
+    </button>
+  </aside>
 
-<!-- SHOPPING CART -->
-<aside id="cart" class="cart-panel">
+  <div
+    id="overlay"
+    class="overlay"
+    onclick="toggleCart(false)"
+  ></div>
 
-  <div class="cart-head">
-    <h2>Your cart</h2>
-    <button onclick="toggleCart()">×</button>
-  </div>
+  <footer>
+    <strong>KINGSMADE</strong>
+    <p>CRAFT FOR KINGS</p>
+    <small>© 2026 KINGSMADE. All rights reserved.</small>
+  </footer>
 
-  <div id="cartItems"></div>
+  <script src="/script.js" defer></script>
 
-  <div class="cart-total">
-    <span>Total</span>
-    <strong id="cartTotal">₦0</strong>
-  </div>
+  <script>
+    async function loadKingsmadeHero() {
+      const hero = document.getElementById("homepageHero");
 
-  <button class="checkout" onclick="checkout()">
-    Proceed to checkout
-  </button>
+      try {
+        const response = await fetch("/api/hero", {
+          method: "GET",
+          cache: "no-store"
+        });
 
-</aside>
+        if (!response.ok) return;
 
-<div
-  id="overlay"
-  class="overlay"
-  onclick="toggleCart()">
-</div>
+        const data = await response.json();
+        const settings = data.hero;
 
-<!-- FOOTER -->
-<footer>
-  <strong>KINGSMADE</strong>
-  <p>PREMIUM EVERYDAY ESSENTIALS</p>
-  <small>© 2026 KINGSMADE. All rights reserved.</small>
-</footer>
+        if (!settings || typeof settings !== "object") return;
 
-<!-- EXISTING STORE JAVASCRIPT -->
-<script src="script.js"></script>
+        const visible = settings.is_visible === undefined
+          ? true
+          : Number(settings.is_visible) === 1;
 
-<!-- LOAD HERO SETTINGS FROM ADMIN DASHBOARD -->
-<script>
-async function loadKingsmadeHero() {
-  const hero = document.getElementById("homepageHero");
+        hero.classList.toggle("is-hidden", !visible);
 
-  try {
-    const response = await fetch("/api/hero", {
-      method: "GET",
-      cache: "no-store"
-    });
+        if (settings.heading) {
+          document.getElementById("heroHeading").textContent =
+            settings.heading;
+        }
 
-    if (!response.ok) return;
+        document.getElementById("heroSubtitle").textContent =
+          settings.subtitle || "";
 
-    const data = await response.json();
-    const settings = data.hero;
+        const button = document.getElementById("heroButton");
+        button.textContent =
+          settings.button_text || "SHOP COLLECTION";
 
-    if (!settings) return;
+        button.href = safeHeroDestination(
+          settings.button_url || "#shop"
+        );
 
-    // Show or hide the hero section
-    hero.classList.toggle(
-      "is-hidden",
-      Number(settings.is_visible) !== 1
-    );
+        const image = document.getElementById("heroBackground");
+        const imageUrl = settings.image_url || "";
+        const safeImage = safeHeroImage(imageUrl);
 
-    // Main heading
-    if (settings.heading) {
-      document.getElementById("heroHeading").textContent =
-        settings.heading;
+        if (safeImage) {
+          image.src = safeImage;
+          image.hidden = false;
+        } else {
+          image.hidden = true;
+          image.removeAttribute("src");
+        }
+      } catch (error) {
+        console.error("KINGSMADE hero loading error:", error);
+      }
     }
 
-    // Subtitle
-    document.getElementById("heroSubtitle").textContent =
-      settings.subtitle || "";
+    function safeHeroDestination(value) {
+      if (typeof value !== "string") return "#shop";
 
-    // Button
-    const button = document.getElementById("heroButton");
+      if (value.startsWith("#")) return value;
 
-    button.textContent =
-      settings.button_text || "SHOP COLLECTION";
+      try {
+        const url = new URL(value, location.origin);
 
-    // Only allow safe destination URLs
-    const destination = settings.button_url || "#shop";
+        if (
+          url.origin === location.origin &&
+          ["http:", "https:"].includes(url.protocol)
+        ) {
+          return url.href;
+        }
 
-    if (
-      destination.startsWith("/") ||
-      destination.startsWith("#") ||
-      /^https:\/\//i.test(destination)
-    ) {
-      button.href = destination;
-    } else {
-      button.href = "#shop";
+        if (url.protocol === "https:") return url.href;
+      } catch {}
+
+      return "#shop";
     }
 
-    // Background image
-    const image = document.getElementById("heroBackground");
-    const imageUrl = settings.image_url || "";
+    function safeHeroImage(value) {
+      if (typeof value !== "string" || !value.trim()) return "";
 
-    if (
-      imageUrl.startsWith("/") ||
-      /^https:\/\//i.test(imageUrl)
-    ) {
-      image.src = imageUrl;
-      image.hidden = false;
-    } else {
-      image.hidden = true;
-      image.removeAttribute("src");
+      try {
+        const url = new URL(value, location.origin);
+
+        if (
+          url.origin === location.origin ||
+          url.protocol === "https:"
+        ) {
+          return url.href;
+        }
+      } catch {}
+
+      return "";
     }
 
-  } catch (error) {
-    console.error("KINGSMADE hero loading error:", error);
-  }
-}
-
-loadKingsmadeHero();
-</script>
-
+    loadKingsmadeHero();
+  </script>
 </body>
 </html>
