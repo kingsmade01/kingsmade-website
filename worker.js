@@ -5,7 +5,7 @@
    D1 binding: DB
    Static assets binding: ASSETS
 
-   Admin dashboard remains on the separate test Worker.
+   This is NOT the private admin Worker.
    ===================================================== */
 
 const DEFAULT_HERO = {
@@ -31,23 +31,24 @@ function json(data, status = 200) {
 
 async function getProducts(env) {
   const result = await env.DB.prepare(`
-    SELECT
-      id,
-      name,
-      description,
-      price_ngn,
-      category,
-      image_url,
-      sizes_json,
-      colors_json,
-      stock_quantity,
-      is_active
+    SELECT *
     FROM products
     WHERE is_active = 1
     ORDER BY id DESC
   `).all();
 
-  return result.results || [];
+  return (result.results || []).map(product => ({
+    id: product.id,
+    name: product.name,
+    description: product.description || "",
+    price_ngn: product.price_ngn,
+    category: product.category || "",
+    image_url: product.image_url || "",
+    sizes_json: product.sizes_json || "[]",
+    colors_json: product.colors_json || "[]",
+    stock_quantity: product.stock_quantity,
+    is_active: product.is_active
+  }));
 }
 
 /* ---------------- PUBLIC HERO ---------------- */
@@ -67,14 +68,16 @@ async function getHero(env) {
 
     const saved = JSON.parse(result.setting_value);
 
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) {
+      return DEFAULT_HERO;
+    }
+
     return {
       ...DEFAULT_HERO,
       ...saved
     };
 
   } catch (error) {
-    // The admin Worker creates this table.
-    // Until then, display the default homepage hero.
     if (/no such table/i.test(error.message || "")) {
       return DEFAULT_HERO;
     }
@@ -91,52 +94,44 @@ export default {
     const path = url.pathname;
 
     try {
-
-      // Public product catalogue
-      if (path === "/api/products") {
-        if (!["GET", "HEAD"].includes(request.method)) {
-          return json(
-            { error: "Method not allowed." },
-            405
-          );
-        }
-
-        const products = await getProducts(env);
-
-        return json({ products });
-      }
-
-      // Public homepage hero settings
-      if (path === "/api/hero") {
-        if (!["GET", "HEAD"].includes(request.method)) {
-          return json(
-            { error: "Method not allowed." },
-            405
-          );
-        }
-
-        const hero = await getHero(env);
-
-        return json({ hero });
-      }
-
-      // API health check
-      if (path === "/api/health") {
-        return json({
-          ok: true,
-          service: "KINGSMADE Storefront API"
-        });
-      }
-
-      // Prevent unknown API requests from becoming homepage HTML.
       if (path.startsWith("/api/")) {
+        if (!["GET", "HEAD"].includes(request.method)) {
+          return json(
+            { error: "Method not allowed." },
+            405
+          );
+        }
+
+        if (!env.DB) {
+          return json(
+            { error: "Database binding DB is missing." },
+            503
+          );
+        }
+
+        if (path === "/api/products") {
+          const products = await getProducts(env);
+          return json({ products });
+        }
+
+        if (path === "/api/hero") {
+          const hero = await getHero(env);
+          return json({ hero });
+        }
+
+        if (path === "/api/health") {
+          return json({
+            ok: true,
+            service: "KINGSMADE Storefront API"
+          });
+        }
+
         return json(
           { error: "API endpoint not found." },
           404
         );
       }
 
-      // Serve the existing HTML, CSS, JS and images.
       if (!env.ASSETS) {
         return new Response(
           "Static assets binding ASSETS is missing.",
