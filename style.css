@@ -1,10 +1,11 @@
 /* =====================================
-   KINGSMADE DYNAMIC PRODUCT IMAGES
+   KINGSMADE PRODUCT IMAGES
 ===================================== */
 
 .product-img {
   position: relative;
   isolation: isolate;
+  overflow: hidden;
 }
 
 .product-img img {
@@ -18,13 +19,13 @@
   transition: transform .5s ease;
 }
 
-.card:hover .product-img img {
-  transform: scale(1.035);
-}
-
 .product-img::after {
   z-index: 1;
   pointer-events: none;
+}
+
+.card:hover .product-img img {
+  transform: scale(1.035);
 }
 
 /* PRODUCT DETAILS */
@@ -39,23 +40,23 @@
 }
 
 .product-description {
+  margin: 8px 0;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.7;
-  margin: 8px 0;
 }
 
 .product-options {
+  margin: 5px 0;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.7;
-  margin: 5px 0;
 }
 
 .product-stock {
+  margin: 8px 0 12px;
   color: var(--muted);
   font-size: 10px;
-  margin: 8px 0 12px;
 }
 
 /* CART QUANTITY CONTROLS */
@@ -102,7 +103,7 @@
   font-size: 13px;
 }
 
-/* HERO IMAGE AND CONTENT */
+/* HERO */
 
 .hero {
   position: relative;
@@ -115,7 +116,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: .35;
+  opacity: .38;
   z-index: -1;
   pointer-events: none;
 }
@@ -131,17 +132,14 @@
   display: none !important;
 }
 
-/* MOBILE PRODUCT DETAILS */
+/* MOBILE */
 
 @media (max-width: 520px) {
   .product-description {
     font-size: 10px;
   }
 
-  .product-options {
-    font-size: 9px;
-  }
-
+  .product-options,
   .product-stock {
     font-size: 9px;
   }
