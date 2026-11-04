@@ -1,42 +1,101 @@
 /* =====================================================
    KINGSMADE STOREFRONT
-   Dynamic products + shopping cart
-   Currency: Nigerian Naira
+   Product catalogue + persistent shopping cart
+   Current database price field: price_ngn
    ===================================================== */
+
+"use strict";
 
 let products = [];
 let cart = [];
 
-const naira = n =>
+const CART_STORAGE_KEY = "kingsmade_cart_v1";
+
+const $ = id => document.getElementById(id);
+
+const naira = value =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     maximumFractionDigits: 0
-  }).format(Number(n) || 0);
+  }).format(Number(value) || 0);
 
-const $ = id => document.getElementById(id);
-
-function safeImageURL(url) {
-  if (!url) return "";
+function parseList(value) {
+  if (Array.isArray(value)) return value;
 
   try {
-    const parsed = new URL(url, location.origin);
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function safeImageURL(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+
+  try {
+    const url = new URL(value, location.origin);
 
     if (
-      parsed.origin === location.origin ||
-      parsed.protocol === "https:"
+      url.origin === location.origin ||
+      url.protocol === "https:"
     ) {
-      return parsed.href;
+      return url.href;
     }
   } catch {}
 
   return "";
 }
 
+/* ---------------- CART STORAGE ---------------- */
+
+function saveCart() {
+  try {
+    localStorage.setItem(
+      CART_STORAGE_KEY,
+      JSON.stringify(
+        cart.map(item => ({
+          id: item.id,
+          qty: item.qty
+        }))
+      )
+    );
+  } catch (error) {
+    console.warn("Could not save KINGSMADE cart:", error);
+  }
+}
+
+function restoreCart() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(CART_STORAGE_KEY) || "[]"
+    );
+
+    if (!Array.isArray(saved)) return [];
+
+    return saved
+      .filter(item =>
+        item &&
+        item.id !== undefined &&
+        Number.isInteger(Number(item.qty)) &&
+        Number(item.qty) > 0
+      )
+      .map(item => ({
+        id: item.id,
+        qty: Number(item.qty)
+      }));
+  } catch {
+    return [];
+  }
+}
+
 /* ---------------- LOAD PRODUCTS ---------------- */
 
 async function loadProducts() {
   const container = $("products");
+
+  if (!container) return;
 
   container.replaceChildren();
 
@@ -61,21 +120,25 @@ async function loadProducts() {
     }
 
     products = data.products
-      .filter(p => Number(p.is_active) === 1)
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description || "",
-        category: p.category || "",
-        price: Number(p.price_ngn),
-        image: p.image_url || "",
-        stock: Math.max(0, Number(p.stock_quantity) || 0),
-        sizes: parseList(p.sizes_json),
-        colors: parseList(p.colors_json)
+      .filter(product => Number(product.is_active) === 1)
+      .map(product => ({
+        id: product.id,
+        name: String(product.name || "KINGSMADE Product"),
+        description: String(product.description || ""),
+        category: String(product.category || ""),
+        price: Math.max(0, Number(product.price_ngn) || 0),
+        image: product.image_url || "",
+        stock: Math.max(
+          0,
+          Math.floor(Number(product.stock_quantity) || 0)
+        ),
+        sizes: parseList(product.sizes_json),
+        colors: parseList(product.colors_json)
       }));
 
+    restoreCartFromStorage();
     renderProducts();
-    updateCartAvailability();
+    renderCart();
 
   } catch (error) {
     console.error("KINGSMADE product loading:", error);
@@ -90,20 +153,33 @@ async function loadProducts() {
   }
 }
 
-function parseList(value) {
-  try {
-    const parsed = JSON.parse(value || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+/* ---------------- RESTORE CART ---------------- */
+
+function restoreCartFromStorage() {
+  const saved = restoreCart();
+
+  cart = saved
+    .map(savedItem => {
+      const product = products.find(
+        item => String(item.id) === String(savedItem.id)
+      );
+
+      if (!product || product.stock <= 0) return null;
+
+      return {
+        ...product,
+        qty: Math.min(savedItem.qty, product.stock)
+      };
+    })
+    .filter(Boolean);
+
+  saveCart();
 }
 
 /* ---------------- DISPLAY PRODUCTS ---------------- */
 
 function renderProducts() {
   const container = $("products");
-
   container.replaceChildren();
 
   if (!products.length) {
@@ -127,6 +203,7 @@ function renderProducts() {
       image.src = imageURL;
       image.alt = product.name;
       image.loading = "lazy";
+
       image.onerror = () => {
         image.remove();
         imageBox.textContent = "KM";
@@ -142,44 +219,46 @@ function renderProducts() {
 
     const name = document.createElement("h3");
     name.textContent = product.name;
+    body.appendChild(name);
 
-    const category = document.createElement("p");
-    category.className = "product-category";
-    category.textContent = product.category;
+    if (product.category) {
+      const category = document.createElement("p");
+      category.className = "product-category";
+      category.textContent = product.category;
+      body.appendChild(category);
+    }
 
-    const description = document.createElement("p");
-    description.className = "product-description";
-    description.textContent = product.description;
-
-    const price = document.createElement("div");
-    price.className = "price";
-    price.textContent = naira(product.price);
-
-    body.append(name);
-
-    if (product.category) body.append(category);
-    if (product.description) body.append(description);
+    if (product.description) {
+      const description = document.createElement("p");
+      description.className = "product-description";
+      description.textContent = product.description;
+      body.appendChild(description);
+    }
 
     if (product.sizes.length) {
       const sizes = document.createElement("p");
       sizes.className = "product-options";
       sizes.textContent = "Sizes: " + product.sizes.join(", ");
-      body.append(sizes);
+      body.appendChild(sizes);
     }
 
     if (product.colors.length) {
       const colors = document.createElement("p");
       colors.className = "product-options";
       colors.textContent = "Colours: " + product.colors.join(", ");
-      body.append(colors);
+      body.appendChild(colors);
     }
 
-    body.append(price);
+    const price = document.createElement("div");
+    price.className = "price";
+    price.textContent = naira(product.price);
+    body.appendChild(price);
 
     const stock = document.createElement("p");
     stock.className = "product-stock";
 
     const button = document.createElement("button");
+    button.type = "button";
     button.className = "add";
 
     if (product.stock <= 0) {
@@ -187,10 +266,9 @@ function renderProducts() {
       button.textContent = "Out of stock";
       button.disabled = true;
     } else {
-      stock.textContent =
-        product.stock <= 5
-          ? "Only " + product.stock + " left"
-          : "In stock";
+      stock.textContent = product.stock <= 5
+        ? "Only " + product.stock + " left"
+        : "In stock";
 
       button.textContent = "Add to cart";
       button.addEventListener("click", () => add(product.id));
@@ -202,14 +280,18 @@ function renderProducts() {
   });
 }
 
-/* ---------------- SHOPPING CART ---------------- */
+/* ---------------- ADD TO CART ---------------- */
 
 function add(id) {
-  const product = products.find(p => String(p.id) === String(id));
+  const product = products.find(
+    item => String(item.id) === String(id)
+  );
 
   if (!product || product.stock <= 0) return;
 
-  const item = cart.find(x => String(x.id) === String(id));
+  const item = cart.find(
+    entry => String(entry.id) === String(id)
+  );
 
   if (item) {
     if (item.qty >= product.stock) {
@@ -217,7 +299,7 @@ function add(id) {
       return;
     }
 
-    item.qty++;
+    item.qty += 1;
   } else {
     cart.push({
       ...product,
@@ -225,32 +307,50 @@ function add(id) {
     });
   }
 
+  saveCart();
   renderCart();
   toggleCart(true);
 }
 
+/* ---------------- CHANGE QUANTITY ---------------- */
+
 function changeQuantity(id, amount) {
-  const item = cart.find(x => String(x.id) === String(id));
+  const item = cart.find(
+    entry => String(entry.id) === String(id)
+  );
+
   if (!item) return;
 
-  const product = products.find(p => String(p.id) === String(id));
+  const product = products.find(
+    entry => String(entry.id) === String(id)
+  );
 
-  const next = item.qty + amount;
+  const nextQuantity = item.qty + amount;
 
-  if (next <= 0) {
-    cart = cart.filter(x => String(x.id) !== String(id));
-  } else if (!product || next > product.stock) {
-    alert("Not enough stock available.");
+  if (nextQuantity <= 0) {
+    removeFromCart(id);
     return;
-  } else {
-    item.qty = next;
   }
 
+  if (!product || nextQuantity > product.stock) {
+    alert("Not enough stock available.");
+    return;
+  }
+
+  item.qty = nextQuantity;
+
+  saveCart();
   renderCart();
 }
 
+/* ---------------- REMOVE ITEM ---------------- */
+
 function removeFromCart(id) {
-  cart = cart.filter(x => String(x.id) !== String(id));
+  cart = cart.filter(
+    item => String(item.id) !== String(id)
+  );
+
+  saveCart();
   renderCart();
 }
 
@@ -258,10 +358,14 @@ function removeFromCart(id) {
 
 function renderCart() {
   const cartItems = $("cartItems");
+  if (!cartItems) return;
 
   cartItems.replaceChildren();
 
-  const count = cart.reduce((sum, item) => sum + item.qty, 0);
+  const count = cart.reduce(
+    (sum, item) => sum + item.qty,
+    0
+  );
 
   $("cartCount").textContent = count;
 
@@ -289,6 +393,7 @@ function renderCart() {
     const minus = document.createElement("button");
     minus.type = "button";
     minus.textContent = "−";
+    minus.setAttribute("aria-label", "Decrease quantity");
     minus.addEventListener("click", () =>
       changeQuantity(item.id, -1)
     );
@@ -296,6 +401,7 @@ function renderCart() {
     const plus = document.createElement("button");
     plus.type = "button";
     plus.textContent = "+";
+    plus.setAttribute("aria-label", "Increase quantity");
     plus.addEventListener("click", () =>
       changeQuantity(item.id, 1)
     );
@@ -308,7 +414,6 @@ function renderCart() {
     );
 
     controls.append(minus, plus, remove);
-
     details.append(name, quantity, controls);
 
     const price = document.createElement("strong");
@@ -332,32 +437,14 @@ function toggleCart(force) {
   const cartPanel = $("cart");
   const overlay = $("overlay");
 
-  const open =
-    force === true ||
-    !cartPanel.classList.contains("open");
+  if (!cartPanel || !overlay) return;
+
+  const open = typeof force === "boolean"
+    ? force
+    : !cartPanel.classList.contains("open");
 
   cartPanel.classList.toggle("open", open);
   overlay.classList.toggle("open", open);
-}
-
-function updateCartAvailability() {
-  cart = cart.filter(item => {
-    const product = products.find(
-      p => String(p.id) === String(item.id)
-    );
-
-    if (!product) return false;
-
-    item.price = product.price;
-    item.name = product.name;
-    item.stock = product.stock;
-
-    item.qty = Math.min(item.qty, product.stock);
-
-    return item.qty > 0;
-  });
-
-  renderCart();
 }
 
 /* ---------------- CHECKOUT ---------------- */
@@ -369,8 +456,8 @@ function checkout() {
   }
 
   alert(
-    "Your KINGSMADE cart is ready. " +
-    "Payment processing has not yet been connected."
+    "KINGSMADE checkout is not connected yet. " +
+    "Your cart has been saved. Payment is not available yet."
   );
 }
 
