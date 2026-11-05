@@ -1,4 +1,3 @@
-
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "kingsmade-admin-test",
@@ -10,15 +9,16 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": [
       "/",
-      "/admin*",
+      "/admin",
+      "/admin/*",
       "/api/*"
     ]
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "kingsmade-store",
-      "database_id": "294851a1-7adf-48f0-a8a4-fce8b74ea7e9"
+      "database_name": "YOUR_TEST_DATABASE_NAME",
+      "database_id": "YOUR_SEPARATE_TEST_DATABASE_ID"
     }
   ]
 }
