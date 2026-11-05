@@ -1,7 +1,7 @@
 
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "kingsmade",
+  "name": "kingsmade-admin-test",
   "main": "worker.js",
   "compatibility_date": "2026-10-11",
   "assets": {
@@ -9,6 +9,8 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": [
+      "/",
+      "/admin*",
       "/api/*"
     ]
   },
