@@ -17,8 +17,9 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "YOUR_TEST_DATABASE_NAME",
-      "database_id": "YOUR_SEPARATE_TEST_DATABASE_ID"
+      "database_name": "kingsmade-admin-test-db",
+      "database_id": "489c208b-27d1-447c-9f3e-3cf3555e091d",
+      "migrations_dir": "migrations"
     }
   ]
 }
