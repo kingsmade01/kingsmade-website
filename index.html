@@ -1,208 +1,95 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#050505">
-  <meta name="description" content="Discover the KINGSMADE collection. Premium fashion and modern essentials.">
-  <title>KINGSMADE | Official Store</title>
-  <link rel="stylesheet" href="/style.css">
-
-  <style>
-    .hero {
-      position: relative;
-      overflow: hidden;
-      isolation: isolate;
-    }
-
-    .hero-image {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: .38;
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    .hero.is-hidden {
-      display: none !important;
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 1;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f1e9">
+<meta name="description" content="KINGSMADE — Premium menswear. Style is a statement. Excellence is a standard.">
+<title>KINGSMADE | An Expression of Excellence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
-
 <body>
-  <header class="header">
-    <a class="logo" href="/">KINGSMADE</a>
-    <button class="cart-btn" type="button" onclick="toggleCart()">
-      Cart <span id="cartCount">0</span>
-    </button>
-  </header>
-
-  <main>
-    <section class="hero" id="homepageHero">
-      <img
-        id="heroBackground"
-        class="hero-image"
-        alt=""
-        hidden
-      >
-
-      <div class="hero-content">
-        <p class="eyebrow" id="heroEyebrow">EST. 2025</p>
-        <h1 id="heroHeading">KINGSMADE COLLECTION</h1>
-        <p id="heroSubtitle">Modern essentials by KINGSMADE.</p>
-
-        <a class="shop-btn" id="heroButton" href="#shop">
-          SHOP COLLECTION
-        </a>
-      </div>
-    </section>
-
-    <section id="shop" class="shop">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">KINGSMADE COLLECTION</p>
-          <h2>Shop</h2>
-        </div>
-      </div>
-
-      <div id="products" class="grid"></div>
-    </section>
-  </main>
-
-  <aside id="cart" class="cart-panel" aria-label="Shopping cart">
-    <div class="cart-head">
-      <h2>Your cart</h2>
-      <button type="button" aria-label="Close cart" onclick="toggleCart(false)">×</button>
-    </div>
-
-    <div id="cartItems"></div>
-
-    <div class="cart-total">
-      <span>Total</span>
-      <strong id="cartTotal">₦0</strong>
-    </div>
-
-    <button class="checkout" type="button" onclick="checkout()">
-      Proceed to checkout
-    </button>
-  </aside>
-
-  <div
-    id="overlay"
-    class="overlay"
-    onclick="toggleCart(false)"
-  ></div>
-
-  <footer>
-    <strong>KINGSMADE</strong>
-    <p>CRAFT FOR KINGS</p>
-    <small>© 2026 KINGSMADE. All rights reserved.</small>
-  </footer>
-
-  <script src="/script.js" defer></script>
-
-  <script>
-    async function loadKingsmadeHero() {
-      const hero = document.getElementById("homepageHero");
-
-      try {
-        const response = await fetch("/api/hero", {
-          method: "GET",
-          cache: "no-store"
-        });
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const settings = data.hero;
-
-        if (!settings || typeof settings !== "object") return;
-
-        const visible = settings.is_visible === undefined
-          ? true
-          : Number(settings.is_visible) === 1;
-
-        hero.classList.toggle("is-hidden", !visible);
-
-        if (settings.heading) {
-          document.getElementById("heroHeading").textContent =
-            settings.heading;
-        }
-
-        document.getElementById("heroSubtitle").textContent =
-          settings.subtitle || "";
-
-        const button = document.getElementById("heroButton");
-        button.textContent =
-          settings.button_text || "SHOP COLLECTION";
-
-        button.href = safeHeroDestination(
-          settings.button_url || "#shop"
-        );
-
-        const image = document.getElementById("heroBackground");
-        const imageUrl = settings.image_url || "";
-        const safeImage = safeHeroImage(imageUrl);
-
-        if (safeImage) {
-          image.src = safeImage;
-          image.hidden = false;
-        } else {
-          image.hidden = true;
-          image.removeAttribute("src");
-        }
-      } catch (error) {
-        console.error("KINGSMADE hero loading error:", error);
-      }
-    }
-
-    function safeHeroDestination(value) {
-      if (typeof value !== "string") return "#shop";
-
-      if (value.startsWith("#")) return value;
-
-      try {
-        const url = new URL(value, location.origin);
-
-        if (
-          url.origin === location.origin &&
-          ["http:", "https:"].includes(url.protocol)
-        ) {
-          return url.href;
-        }
-
-        if (url.protocol === "https:") return url.href;
-      } catch {}
-
-      return "#shop";
-    }
-
-    function safeHeroImage(value) {
-      if (typeof value !== "string" || !value.trim()) return "";
-
-      try {
-        const url = new URL(value, location.origin);
-
-        if (
-          url.origin === location.origin ||
-          url.protocol === "https:"
-        ) {
-          return url.href;
-        }
-      } catch {}
-
-      return "";
-    }
-
-    loadKingsmadeHero();
-  </script>
-</body>
-</html>
+<div class="announcement">COMPLIMENTARY STYLE. UNCOMPROMISING QUALITY. <span>CRAFT FOR KINGS</span></div>
+<header class="site-header">
+  <a class="brand" href="/" aria-label="KINGSMADE home"><span>KINGSMADE</span><small>EST. 2025</small></a>
+  <nav class="desktop-nav" aria-label="Main navigation">
+    <a href="#shop">NEW ARRIVALS</a><a href="#categories">CATEGORIES</a><a href="#shop">CLOTHING</a><a href="#shop">FOOTWEAR</a><a href="#footer">ABOUT</a>
+  </nav>
+  <div class="header-actions">
+    <a class="contact-link" href="mailto:kingsmade01@gmail.com">CONTACT KINGSMADE</a>
+    <button class="icon-btn menu-btn" type="button" aria-label="Open menu" onclick="document.body.classList.toggle('menu-open')">☰</button>
+    <button class="bag-btn" type="button" onclick="toggleCart()" aria-label="Open shopping bag">BAG <span id="cartCount">0</span></button>
+  </div>
+</header>
+<nav class="mobile-nav"><a href="#shop">Shop collection</a><a href="#categories">Categories</a><a href="mailto:kingsmade01@gmail.com">Contact</a></nav>
+<main>
+<section class="hero" id="homepageHero">
+  <img id="heroBackground" class="hero-image" alt="" hidden>
+  <div class="hero-shade"></div>
+  <div class="hero-content">
+    <p class="eyebrow" id="heroEyebrow">KINGSMADE · LUXURY MENSWEAR</p>
+    <h1 id="heroHeading">AN EXPRESSION<br>OF EXCELLENCE.</h1>
+    <p class="hero-copy" id="heroSubtitle">Style is a statement. Excellence is a standard.</p>
+    <a class="shop-btn" id="heroButton" href="#shop">DISCOVER THE COLLECTION <span>↗</span></a>
+  </div>
+  <div class="hero-signature"><span>KM</span><b>KINGSMADE</b><small>CRAFT FOR KINGS</small></div>
+  <div class="hero-index">01 <i></i> THE SIGNATURE COLLECTION</div>
+</section>
+<section class="intro-strip"><span>PREMIUM QUALITY</span><i>✳</i><span>TIMELESS STYLE</span><i>✳</i><span>MADE FOR KINGS</span></section>
+<section class="categories section-wrap" id="categories">
+  <div class="section-kicker">DISCOVER YOUR STYLE</div>
+  <div class="section-title-row"><h2>Find what fits<br><em>your standard.</em></h2><p>Considered essentials. Confident silhouettes.<br>Pieces made to become part of your signature.</p></div>
+  <div class="category-grid">
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=85" alt="T-shirts"><span>01 / T-SHIRTS</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=700&q=85" alt="Hoodies"><span>02 / HOODIES</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1517438476312-10d79c077509?auto=format&fit=crop&w=700&q=85" alt="Footwear"><span>03 / FOOTWEAR</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=700&q=85" alt="Accessories"><span>04 / ACCESSORIES</span></a>
+  </div>
+</section>
+<section class="collection section-wrap" id="shop">
+  <div class="section-kicker">THE KINGSMADE COLLECTION</div>
+  <div class="section-title-row"><h2>Designed to be<br><em>remembered.</em></h2><p>Explore the collection.<br>Every detail has a purpose.</p></div>
+  <div id="products" class="grid"><p>Loading KINGSMADE collection...</p></div>
+</section>
+<section class="closing-banner"><div><p>THE KINGSMADE STANDARD</p><h2>Dress like<br><em>you mean it.</em></h2><a href="#shop">SHOP THE COLLECTION ↗</a></div></section>
+</main>
+<aside id="cart" class="cart-panel" aria-label="Shopping cart">
+ <div class="cart-head"><div><small>YOUR SELECTION</small><h2>Shopping bag</h2></div><button type="button" aria-label="Close cart" onclick="toggleCart(false)">×</button></div>
+ <div id="cartItems"></div>
+ <div class="cart-total"><span>Subtotal</span><strong id="cartTotal">₦0</strong></div>
+ <button class="checkout" type="button" onclick="checkout()">PROCEED TO CHECKOUT</button>
+ <p class="cart-note">Secure checkout · Crafted for kings</p>
+</aside>
+<div id="overlay" class="overlay" onclick="toggleCart(false)"></div>
+<footer id="footer">
+ <div class="footer-main"><div class="footer-brand"><span>KINGSMADE</span><small>CRAFT FOR KINGS</small><p>Premium menswear.<br>Made for those who set the standard.</p></div>
+ <div><b>EXPLORE</b><a href="#shop">Shop all</a><a href="#categories">Categories</a><a href="#shop">New arrivals</a></div>
+ <div><b>CLIENT CARE</b><a href="mailto:kingsmade01@gmail.com">Contact</a><a href="mailto:kingsmade01@gmail.com">Customer support</a></div>
+ <div><b>FOLLOW KINGSMADE</b><a href="https://www.instagram.com/kingsmade01/" target="_blank" rel="noopener">Instagram ↗</a><a href="https://x.com/kingsmadebrand/" target="_blank" rel="noopener">X ↗</a><a href="https://www.facebook.com/profile.php?id=61595227090232" target="_blank" rel="noopener">Facebook ↗</a></div></div>
+ <div class="footer-bottom"><span>© 2026 KINGSMADE. ALL RIGHTS RESERVED.</span><span>EST. 2025 · CRAFT FOR KINGS</span></div>
+</footer>
+<script src="/script.js" defer></script>
+<script>
+async function loadKingsmadeHero(){
+ const hero=document.getElementById("homepageHero");
+ try{
+  const response=await fetch("/api/hero",{cache:"no-store"});
+  if(!response.ok)return;
+  const data=await response.json(),s=data.hero;
+  if(!s||typeof s!=="object")return;
+  hero.classList.toggle("is-hidden",s.is_visible!==undefined&&Number(s.is_visible)!==1);
+  if(s.heading)document.getElementById("heroHeading").textContent=s.heading;
+  if(s.subtitle)document.getElementById("heroSubtitle").textContent=s.subtitle;
+  const button=document.getElementById("heroButton");
+  button.textContent=(s.button_text||"DISCOVER THE COLLECTION")+" ↗";
+  button.href=s.button_url||"#shop";
+  const image=document.getElementById("heroBackground");
+  if(typeof s.image_url==="string"&&s.image_url.trim()){image.src=s.image_url;image.hidden=false;}
+ }catch(e){console.error("Hero settings:",e);}
+}
+loadKingsmadeHero();
+</script>
+</body></html>
