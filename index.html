@@ -1,208 +1,215 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#050505">
-  <meta name="description" content="Discover the KINGSMADE collection. Premium fashion and modern essentials.">
-  <title>KINGSMADE | Official Store</title>
-  <link rel="stylesheet" href="/style.css">
-
-  <style>
-    .hero {
-      position: relative;
-      overflow: hidden;
-      isolation: isolate;
-    }
-
-    .hero-image {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: .38;
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    .hero.is-hidden {
-      display: none !important;
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 1;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f1e9">
+  <meta name="description" content="KINGSMADE — Premium fashion, accessories and craftsmanship. Craft for Kings.">
+  <title>KINGSMADE | Craft for Kings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <header class="header">
-    <a class="logo" href="/">KINGSMADE</a>
-    <button class="cart-btn" type="button" onclick="toggleCart()">
-      Cart <span id="cartCount">0</span>
+
+<header class="header">
+  <a href="#" class="wordmark">KINGSMADE</a>
+
+  <nav class="desktop-nav">
+    <a href="#collection">COLLECTION</a>
+    <a href="#collection" data-category-link="Clothing">CLOTHING</a>
+    <a href="#collection" data-category-link="Footwear">FOOTWEAR</a>
+    <a href="#collection" data-category-link="Accessories">ACCESSORIES</a>
+    <a href="#about">OUR HOUSE</a>
+  </nav>
+
+  <div class="header-actions">
+    <button class="icon-btn" id="searchToggle" aria-label="Search">
+      <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="7"></circle><path d="m16 16 5 5"></path></svg>
     </button>
-  </header>
 
-  <main>
-    <section class="hero" id="homepageHero">
-      <img
-        id="heroBackground"
-        class="hero-image"
-        alt=""
-        hidden
-      >
+    <button class="cart-trigger" id="cartOpen">
+      BAG <span id="cartCount">0</span>
+    </button>
 
-      <div class="hero-content">
-        <p class="eyebrow" id="heroEyebrow">EST. 2025</p>
-        <h1 id="heroHeading">KINGSMADE COLLECTION</h1>
-        <p id="heroSubtitle">Modern essentials by KINGSMADE.</p>
+    <button class="mobile-menu-btn" id="mobileMenu" aria-label="Open menu">☰</button>
+  </div>
+</header>
 
-        <a class="shop-btn" id="heroButton" href="#shop">
-          SHOP COLLECTION
-        </a>
-      </div>
-    </section>
+<div class="mobile-nav" id="mobileNav">
+  <a href="#collection">Collection</a>
+  <a href="#collection" data-category-link="Clothing">Clothing</a>
+  <a href="#collection" data-category-link="Footwear">Footwear</a>
+  <a href="#collection" data-category-link="Accessories">Accessories</a>
+  <a href="#about">Our House</a>
+</div>
 
-    <section id="shop" class="shop">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">KINGSMADE COLLECTION</p>
-          <h2>Shop</h2>
-        </div>
-      </div>
+<main>
 
-      <div id="products" class="grid"></div>
-    </section>
-  </main>
+<section class="hero">
+  <div class="hero-image"></div>
+  <div class="hero-overlay"></div>
 
-  <aside id="cart" class="cart-panel" aria-label="Shopping cart">
-    <div class="cart-head">
-      <h2>Your cart</h2>
-      <button type="button" aria-label="Close cart" onclick="toggleCart(false)">×</button>
+  <div class="hero-content">
+    <div class="hero-copy">
+      <p class="hero-overline">AN EXPRESSION OF EXCELLENCE</p>
+      <h1>KINGSMADE</h1>
+      <p class="hero-slogan">CRAFT FOR KINGS.</p>
+      <p class="hero-description">
+        A distinct expression of style, character and craftsmanship.
+      </p>
+      <a href="#collection" class="hero-button">DISCOVER THE COLLECTION <span>→</span></a>
     </div>
 
-    <div id="cartItems"></div>
+    <div class="monogram" aria-hidden="true">KM</div>
+  </div>
 
-    <div class="cart-total">
-      <span>Total</span>
-      <strong id="cartTotal">₦0</strong>
+  <div class="hero-bottom">
+    <span>EST. 2025</span>
+    <span>CRAFTED WITH PURPOSE</span>
+  </div>
+</section>
+
+<section class="intro" id="about">
+  <p class="eyebrow">THE KINGSMADE PHILOSOPHY</p>
+  <h2>Style is a statement.<br><em>Excellence is a standard.</em></h2>
+  <p>Discover a world of considered design, distinctive essentials and timeless expression.</p>
+</section>
+
+<section class="collection" id="collection">
+
+  <div class="collection-heading">
+    <div>
+      <p class="eyebrow">CURATED FOR THE DISTINGUISHED</p>
+      <h2>THE COLLECTION</h2>
     </div>
 
-    <button class="checkout" type="button" onclick="checkout()">
-      Proceed to checkout
-    </button>
-  </aside>
+    <div class="collection-tools">
+      <div class="search-box" id="searchBox">
+        <input id="productSearch" type="search" placeholder="Search the collection..." aria-label="Search products">
+        <span>⌕</span>
+      </div>
 
-  <div
-    id="overlay"
-    class="overlay"
-    onclick="toggleCart(false)"
-  ></div>
+      <button class="menu-button" id="filterToggle">MENU <span>☰</span></button>
+    </div>
+  </div>
 
-  <footer>
-    <strong>KINGSMADE</strong>
-    <p>CRAFT FOR KINGS</p>
-    <small>© 2026 KINGSMADE. All rights reserved.</small>
-  </footer>
+  <div class="filter-panel" id="filterPanel">
+    <button class="filter active" data-filter="All">ALL</button>
+    <button class="filter" data-filter="Clothing">CLOTHING</button>
+    <button class="filter" data-filter="Footwear">FOOTWEAR</button>
+    <button class="filter" data-filter="Accessories">ACCESSORIES</button>
+    <button class="filter" data-filter="Materials">MATERIALS</button>
+    <button class="filter" data-filter="Men">MEN</button>
+    <button class="filter" data-filter="Women">WOMEN</button>
+    <button class="filter" data-filter="Children">CHILDREN</button>
+  </div>
 
-  <script src="/script.js" defer></script>
+  <div class="collection-meta">
+    <span id="resultCount">OUR SELECTION</span>
+    <label>
+      SORT:
+      <select id="sortProducts">
+        <option value="newest">Newest</option>
+        <option value="low">Price: Low to high</option>
+        <option value="high">Price: High to low</option>
+        <option value="az">Name: A–Z</option>
+      </select>
+    </label>
+  </div>
 
-  <script>
-    async function loadKingsmadeHero() {
-      const hero = document.getElementById("homepageHero");
+  <div class="product-grid" id="products">
+    <div class="loading">DISCOVERING THE COLLECTION...</div>
+  </div>
 
-      try {
-        const response = await fetch("/api/hero", {
-          method: "GET",
-          cache: "no-store"
-        });
+  <p class="empty-state" id="emptyState" hidden>
+    No products found. Try another search.
+  </p>
+</section>
 
-        if (!response.ok) return;
+<section class="brand-banner">
+  <div class="brand-banner-content">
+    <p class="eyebrow">THE ART OF DRESSING WELL</p>
+    <h2>Beyond fashion.<br><em>A way of life.</em></h2>
+    <a href="#collection" class="light-button">EXPLORE KINGSMADE →</a>
+  </div>
+</section>
 
-        const data = await response.json();
-        const settings = data.hero;
+</main>
 
-        if (!settings || typeof settings !== "object") return;
+<footer class="footer">
+  <div class="footer-main">
+    <div>
+      <a href="#" class="footer-logo">KINGSMADE</a>
+      <p>CRAFT FOR KINGS.</p>
+      <p class="footer-note">A distinct expression of timeless style.</p>
+    </div>
 
-        const visible = settings.is_visible === undefined
-          ? true
-          : Number(settings.is_visible) === 1;
+    <div>
+      <h3>EXPLORE</h3>
+      <a href="#collection">Collection</a>
+      <a href="#collection">Accessories</a>
+      <a href="#collection">Footwear</a>
+    </div>
 
-        hero.classList.toggle("is-hidden", !visible);
+    <div>
+      <h3>CONTACT</h3>
+      <a href="mailto:kingsmade01@gmail.com">Email KINGSMADE</a>
+      <a href="#about">Our House</a>
+    </div>
 
-        if (settings.heading) {
-          document.getElementById("heroHeading").textContent =
-            settings.heading;
-        }
+    <div>
+      <h3>CURRENCY</h3>
+      <select id="currencySelect" aria-label="Select currency">
+        <option value="NGN">NGN ₦</option>
+        <option value="USD">USD $</option>
+        <option value="GBP">GBP £</option>
+        <option value="EUR">EUR €</option>
+      </select>
+    </div>
+  </div>
 
-        document.getElementById("heroSubtitle").textContent =
-          settings.subtitle || "";
+  <div class="footer-bottom">
+    <span>© 2026 KINGSMADE. ALL RIGHTS RESERVED.</span>
 
-        const button = document.getElementById("heroButton");
-        button.textContent =
-          settings.button_text || "SHOP COLLECTION";
+    <div class="social-links">
+      <a id="instagramLink" href="#" target="_blank" rel="noopener">INSTAGRAM</a>
+      <a id="facebookLink" href="#" target="_blank" rel="noopener">FACEBOOK</a>
+      <a id="xLink" href="#" target="_blank" rel="noopener">X</a>
+    </div>
+  </div>
+</footer>
 
-        button.href = safeHeroDestination(
-          settings.button_url || "#shop"
-        );
+<!-- SHOPPING CART -->
+<div class="cart-overlay" id="cartOverlay"></div>
 
-        const image = document.getElementById("heroBackground");
-        const imageUrl = settings.image_url || "";
-        const safeImage = safeHeroImage(imageUrl);
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h2>YOUR BAG</h2>
+    <button id="cartClose" aria-label="Close cart">×</button>
+  </div>
 
-        if (safeImage) {
-          image.src = safeImage;
-          image.hidden = false;
-        } else {
-          image.hidden = true;
-          image.removeAttribute("src");
-        }
-      } catch (error) {
-        console.error("KINGSMADE hero loading error:", error);
-      }
-    }
+  <div id="cartItems" class="cart-items">
+    <p>Your bag is empty.</p>
+  </div>
 
-    function safeHeroDestination(value) {
-      if (typeof value !== "string") return "#shop";
+  <div class="cart-summary">
+    <div><span>Subtotal</span><strong id="cartSubtotal">₦0</strong></div>
+    <p>Delivery charges are calculated at checkout.</p>
+    <button class="checkout-button" id="checkoutButton">PROCEED TO CHECKOUT</button>
+  </div>
+</aside>
 
-      if (value.startsWith("#")) return value;
+<!-- PRODUCT DETAILS -->
+<div class="modal-overlay" id="productModal">
+  <div class="product-modal">
+    <button class="modal-close" id="modalClose">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
 
-      try {
-        const url = new URL(value, location.origin);
-
-        if (
-          url.origin === location.origin &&
-          ["http:", "https:"].includes(url.protocol)
-        ) {
-          return url.href;
-        }
-
-        if (url.protocol === "https:") return url.href;
-      } catch {}
-
-      return "#shop";
-    }
-
-    function safeHeroImage(value) {
-      if (typeof value !== "string" || !value.trim()) return "";
-
-      try {
-        const url = new URL(value, location.origin);
-
-        if (
-          url.origin === location.origin ||
-          url.protocol === "https:"
-        ) {
-          return url.href;
-        }
-      } catch {}
-
-      return "";
-    }
-
-    loadKingsmadeHero();
-  </script>
+<script src="script.js"></script>
 </body>
 </html>
