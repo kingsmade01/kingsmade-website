@@ -1,467 +1,495 @@
-/* =====================================================
-   KINGSMADE STOREFRONT
-   Product catalogue + persistent shopping cart
-   Current database price field: price_ngn
-   ===================================================== */
+/* ==========================================
+   KINGSMADE LUXURY STOREFRONT
+   Public storefront — D1 product API
+   ========================================== */
 
-"use strict";
+const CONFIG = {
+  instagram: "https://www.instagram.com/kingsmade01/",
+  facebook: "https://www.facebook.com/profile.php?id=61595227090232",
+  x: "https://x.com/kingsmadebrand/"
+};
 
-let products = [];
-let cart = [];
-
-const CART_STORAGE_KEY = "kingsmade_cart_v1";
+const state = {
+  products: [],
+  cart: JSON.parse(localStorage.getItem("km_cart") || "[]"),
+  category: "All",
+  search: "",
+  sort: "newest",
+  currency: "NGN"
+};
 
 const $ = id => document.getElementById(id);
 
-const naira = value =>
-  new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0
-  }).format(Number(value) || 0);
+const naira = amount => new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0
+}).format(Number(amount) || 0);
 
-function parseList(value) {
+function parseOptions(value) {
   if (Array.isArray(value)) return value;
+  if (!value) return [];
 
   try {
-    const parsed = JSON.parse(value || "[]");
+    const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return [];
+    return String(value).split(",").map(x => x.trim()).filter(Boolean);
   }
 }
 
-function safeImageURL(value) {
-  if (typeof value !== "string" || !value.trim()) return "";
-
-  try {
-    const url = new URL(value, location.origin);
-
-    if (
-      url.origin === location.origin ||
-      url.protocol === "https:"
-    ) {
-      return url.href;
-    }
-  } catch {}
-
-  return "";
+function getImage(product) {
+  return product.image_url || "";
 }
 
-/* ---------------- CART STORAGE ---------------- */
+function categoryOf(product) {
+  const category = String(product.category || "").toLowerCase();
+
+  if (/shoe|sneaker|footwear|sandal/.test(category)) return "Footwear";
+  if (/watch|bracelet|necklace|ring|cap|belt|bag|accessor/.test(category)) return "Accessories";
+  if (/fabric|textile|material/.test(category)) return "Materials";
+  if (/women|female|ladies/.test(category)) return "Women";
+  if (/children|child|kids/.test(category)) return "Children";
+  if (/men|male/.test(category)) return "Men";
+
+  return "Clothing";
+}
 
 function saveCart() {
-  try {
-    localStorage.setItem(
-      CART_STORAGE_KEY,
-      JSON.stringify(
-        cart.map(item => ({
-          id: item.id,
-          qty: item.qty
-        }))
-      )
-    );
-  } catch (error) {
-    console.warn("Could not save KINGSMADE cart:", error);
-  }
+  localStorage.setItem("km_cart", JSON.stringify(state.cart));
+  renderCart();
 }
-
-function restoreCart() {
-  try {
-    const saved = JSON.parse(
-      localStorage.getItem(CART_STORAGE_KEY) || "[]"
-    );
-
-    if (!Array.isArray(saved)) return [];
-
-    return saved
-      .filter(item =>
-        item &&
-        item.id !== undefined &&
-        Number.isInteger(Number(item.qty)) &&
-        Number(item.qty) > 0
-      )
-      .map(item => ({
-        id: item.id,
-        qty: Number(item.qty)
-      }));
-  } catch {
-    return [];
-  }
-}
-
-/* ---------------- LOAD PRODUCTS ---------------- */
 
 async function loadProducts() {
   const container = $("products");
 
-  if (!container) return;
-
-  container.replaceChildren();
-
-  const loading = document.createElement("p");
-  loading.textContent = "Loading KINGSMADE collection...";
-  container.appendChild(loading);
-
   try {
     const response = await fetch("/api/products", {
-      method: "GET",
-      cache: "no-store"
+      headers: { "Accept": "application/json" }
     });
 
-    if (!response.ok) {
-      throw new Error("Unable to retrieve products.");
-    }
+    if (!response.ok) throw new Error("Product service unavailable");
 
     const data = await response.json();
 
     if (!Array.isArray(data.products)) {
-      throw new Error("Invalid product information received.");
+      throw new Error("Invalid product response");
     }
 
-    products = data.products
-      .filter(product => Number(product.is_active) === 1)
-      .map(product => ({
-        id: product.id,
-        name: String(product.name || "KINGSMADE Product"),
-        description: String(product.description || ""),
-        category: String(product.category || ""),
-        price: Math.max(0, Number(product.price_ngn) || 0),
-        image: product.image_url || "",
-        stock: Math.max(
-          0,
-          Math.floor(Number(product.stock_quantity) || 0)
-        ),
-        sizes: parseList(product.sizes_json),
-        colors: parseList(product.colors_json)
+    state.products = data.products
+      .filter(p => Number(p.is_active) === 1)
+      .map(p => ({
+        ...p,
+        id: String(p.id),
+        price_ngn: Number(p.price_ngn) || 0
       }));
 
-    restoreCartFromStorage();
     renderProducts();
-    renderCart();
 
   } catch (error) {
     console.error("KINGSMADE product loading:", error);
 
-    container.replaceChildren();
-
-    const message = document.createElement("p");
-    message.textContent =
-      "Our collection is temporarily unavailable. Please refresh the page.";
-
-    container.appendChild(message);
+    container.innerHTML = `
+      <div class="loading">
+        THE COLLECTION IS TEMPORARILY UNAVAILABLE.
+        <br><br>
+        PLEASE TRY AGAIN.
+        <br><br>
+        <button onclick="loadProducts()">RETRY</button>
+      </div>
+    `;
   }
 }
 
-/* ---------------- RESTORE CART ---------------- */
+function filteredProducts() {
+  let products = [...state.products];
 
-function restoreCartFromStorage() {
-  const saved = restoreCart();
+  if (state.category !== "All") {
+    products = products.filter(p => {
+      const main = categoryOf(p);
+      const actual = String(p.category || "").toLowerCase();
+      const filter = state.category.toLowerCase();
 
-  cart = saved
-    .map(savedItem => {
-      const product = products.find(
-        item => String(item.id) === String(savedItem.id)
-      );
+      return main.toLowerCase() === filter ||
+        actual.includes(filter);
+    });
+  }
 
-      if (!product || product.stock <= 0) return null;
+  if (state.search) {
+    const term = state.search.toLowerCase();
 
-      return {
-        ...product,
-        qty: Math.min(savedItem.qty, product.stock)
-      };
-    })
-    .filter(Boolean);
+    products = products.filter(p =>
+      [p.name, p.description, p.category]
+        .some(value => String(value || "").toLowerCase().includes(term))
+    );
+  }
 
-  saveCart();
+  if (state.sort === "low") {
+    products.sort((a, b) => a.price_ngn - b.price_ngn);
+  } else if (state.sort === "high") {
+    products.sort((a, b) => b.price_ngn - a.price_ngn);
+  } else if (state.sort === "az") {
+    products.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    products.sort((a, b) => Number(b.id) - Number(a.id));
+  }
+
+  return products;
 }
-
-/* ---------------- DISPLAY PRODUCTS ---------------- */
 
 function renderProducts() {
   const container = $("products");
-  container.replaceChildren();
+  const products = filteredProducts();
+
+  $("resultCount").textContent =
+    `${products.length} PIECE${products.length === 1 ? "" : "S"}`;
+
+  $("emptyState").hidden = products.length !== 0;
 
   if (!products.length) {
-    const empty = document.createElement("p");
-    empty.textContent = "New KINGSMADE products coming soon.";
-    container.appendChild(empty);
+    container.innerHTML = "";
     return;
   }
 
-  products.forEach(product => {
-    const card = document.createElement("article");
-    card.className = "card";
+  container.innerHTML = products.map(p => {
+    const image = getImage(p);
 
-    const imageBox = document.createElement("div");
-    imageBox.className = "product-img";
+    return `
+      <article class="product-card">
+        <div class="product-image"
+             onclick="openProduct('${escapeAttr(p.id)}')">
 
-    const imageURL = safeImageURL(product.image);
+          ${image
+            ? `<img src="${escapeAttr(image)}"
+                    alt="${escapeAttr(p.name)}"
+                    loading="lazy"
+                    onerror="this.style.display='none'">`
+            : `<div class="product-placeholder">KM</div>`
+          }
 
-    if (imageURL) {
-      const image = document.createElement("img");
-      image.src = imageURL;
-      image.alt = product.name;
-      image.loading = "lazy";
+        </div>
 
-      image.onerror = () => {
-        image.remove();
-        imageBox.textContent = "KM";
-      };
+        <div class="product-info">
+          <span class="product-category">
+            ${escapeHTML(p.category || "KINGSMADE")}
+          </span>
 
-      imageBox.appendChild(image);
-    } else {
-      imageBox.textContent = "KM";
-    }
+          <h3>${escapeHTML(p.name)}</h3>
 
-    const body = document.createElement("div");
-    body.className = "card-body";
+          <div class="product-price">${naira(p.price_ngn)}</div>
 
-    const name = document.createElement("h3");
-    name.textContent = product.name;
-    body.appendChild(name);
+          <div class="product-actions">
+            <button onclick="openProduct('${escapeAttr(p.id)}')">
+              DETAILS
+            </button>
 
-    if (product.category) {
-      const category = document.createElement("p");
-      category.className = "product-category";
-      category.textContent = product.category;
-      body.appendChild(category);
-    }
-
-    if (product.description) {
-      const description = document.createElement("p");
-      description.className = "product-description";
-      description.textContent = product.description;
-      body.appendChild(description);
-    }
-
-    if (product.sizes.length) {
-      const sizes = document.createElement("p");
-      sizes.className = "product-options";
-      sizes.textContent = "Sizes: " + product.sizes.join(", ");
-      body.appendChild(sizes);
-    }
-
-    if (product.colors.length) {
-      const colors = document.createElement("p");
-      colors.className = "product-options";
-      colors.textContent = "Colours: " + product.colors.join(", ");
-      body.appendChild(colors);
-    }
-
-    const price = document.createElement("div");
-    price.className = "price";
-    price.textContent = naira(product.price);
-    body.appendChild(price);
-
-    const stock = document.createElement("p");
-    stock.className = "product-stock";
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "add";
-
-    if (product.stock <= 0) {
-      stock.textContent = "Out of stock";
-      button.textContent = "Out of stock";
-      button.disabled = true;
-    } else {
-      stock.textContent = product.stock <= 5
-        ? "Only " + product.stock + " left"
-        : "In stock";
-
-      button.textContent = "Add to cart";
-      button.addEventListener("click", () => add(product.id));
-    }
-
-    body.append(stock, button);
-    card.append(imageBox, body);
-    container.appendChild(card);
-  });
+            <button onclick="addToCart('${escapeAttr(p.id)}')">
+              ADD TO BAG
+            </button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
-/* ---------------- ADD TO CART ---------------- */
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
 
-function add(id) {
-  const product = products.find(
-    item => String(item.id) === String(id)
-  );
+function escapeAttr(value) {
+  return escapeHTML(value);
+}
 
-  if (!product || product.stock <= 0) return;
+function addToCart(id, size = "", color = "") {
+  const product = state.products.find(p => p.id === String(id));
 
-  const item = cart.find(
-    entry => String(entry.id) === String(id)
-  );
+  if (!product) return;
 
-  if (item) {
-    if (item.qty >= product.stock) {
-      alert("You have reached the available stock quantity.");
-      return;
-    }
+  const key = `${id}-${size}-${color}`;
 
-    item.qty += 1;
+  const existing = state.cart.find(item => item.key === key);
+
+  if (existing) {
+    existing.quantity++;
   } else {
-    cart.push({
-      ...product,
-      qty: 1
+    state.cart.push({
+      key,
+      id: product.id,
+      name: product.name,
+      price: product.price_ngn,
+      image: product.image_url || "",
+      size,
+      color,
+      quantity: 1
     });
   }
 
   saveCart();
-  renderCart();
-  toggleCart(true);
+  openCart();
 }
 
-/* ---------------- CHANGE QUANTITY ---------------- */
-
-function changeQuantity(id, amount) {
-  const item = cart.find(
-    entry => String(entry.id) === String(id)
-  );
-
+function changeQuantity(key, amount) {
+  const item = state.cart.find(x => x.key === key);
   if (!item) return;
 
-  const product = products.find(
-    entry => String(entry.id) === String(id)
-  );
+  item.quantity += amount;
 
-  const nextQuantity = item.qty + amount;
-
-  if (nextQuantity <= 0) {
-    removeFromCart(id);
-    return;
+  if (item.quantity <= 0) {
+    state.cart = state.cart.filter(x => x.key !== key);
   }
 
-  if (!product || nextQuantity > product.stock) {
-    alert("Not enough stock available.");
-    return;
-  }
-
-  item.qty = nextQuantity;
-
   saveCart();
-  renderCart();
 }
 
-/* ---------------- REMOVE ITEM ---------------- */
-
-function removeFromCart(id) {
-  cart = cart.filter(
-    item => String(item.id) !== String(id)
-  );
-
+function removeFromCart(key) {
+  state.cart = state.cart.filter(x => x.key !== key);
   saveCart();
-  renderCart();
 }
-
-/* ---------------- DISPLAY CART ---------------- */
 
 function renderCart() {
-  const cartItems = $("cartItems");
-  if (!cartItems) return;
+  const count = state.cart.reduce(
+    (total, item) => total + item.quantity, 0
+  );
 
-  cartItems.replaceChildren();
-
-  const count = cart.reduce(
-    (sum, item) => sum + item.qty,
-    0
+  const subtotal = state.cart.reduce(
+    (total, item) => total + item.price * item.quantity, 0
   );
 
   $("cartCount").textContent = count;
+  $("cartSubtotal").textContent = naira(subtotal);
 
-  if (!cart.length) {
-    const empty = document.createElement("p");
-    empty.textContent = "Your cart is empty.";
-    cartItems.appendChild(empty);
+  if (!state.cart.length) {
+    $("cartItems").innerHTML = "<p>Your bag is empty.</p>";
+    return;
   }
 
-  cart.forEach(item => {
-    const line = document.createElement("div");
-    line.className = "cart-line";
+  $("cartItems").innerHTML = state.cart.map(item => `
+    <div class="cart-item">
 
-    const details = document.createElement("div");
+      ${item.image
+        ? `<img src="${escapeAttr(item.image)}" alt="">`
+        : `<div class="cart-item-placeholder"></div>`
+      }
 
-    const name = document.createElement("b");
-    name.textContent = item.name;
+      <div class="cart-item-details">
+        <h3>${escapeHTML(item.name)}</h3>
+        <p>${naira(item.price)}</p>
+        <p>
+          ${item.size ? "Size: " + escapeHTML(item.size) : ""}
+          ${item.color ? " Colour: " + escapeHTML(item.color) : ""}
+        </p>
 
-    const quantity = document.createElement("div");
-    quantity.textContent = "Qty: " + item.qty;
+        <div class="quantity-control">
+          <button onclick="changeQuantity('${escapeAttr(item.key)}',-1)">−</button>
+          <span>${item.quantity}</span>
+          <button onclick="changeQuantity('${escapeAttr(item.key)}',1)">+</button>
+          <button class="remove-item"
+            onclick="removeFromCart('${escapeAttr(item.key)}')">
+            REMOVE
+          </button>
+        </div>
+      </div>
 
-    const controls = document.createElement("div");
-    controls.className = "cart-controls";
+      <strong>${naira(item.price * item.quantity)}</strong>
+    </div>
+  `).join("");
+}
 
-    const minus = document.createElement("button");
-    minus.type = "button";
-    minus.textContent = "−";
-    minus.setAttribute("aria-label", "Decrease quantity");
-    minus.addEventListener("click", () =>
-      changeQuantity(item.id, -1)
+function openCart() {
+  $("cartDrawer").classList.add("open");
+  $("cartOverlay").classList.add("open");
+}
+
+function closeCart() {
+  $("cartDrawer").classList.remove("open");
+  $("cartOverlay").classList.remove("open");
+}
+
+function openProduct(id) {
+  const product = state.products.find(p => p.id === String(id));
+  if (!product) return;
+
+  const sizes = parseOptions(product.sizes_json);
+  const colors = parseOptions(product.colors_json);
+
+  const image = product.image_url
+    ? `<img src="${escapeAttr(product.image_url)}" alt="${escapeAttr(product.name)}">`
+    : `<div class="product-placeholder">KM</div>`;
+
+  $("modalContent").innerHTML = `
+    <div class="modal-product-layout">
+
+      <div>${image}</div>
+
+      <div>
+        <span class="product-category">
+          ${escapeHTML(product.category || "KINGSMADE")}
+        </span>
+
+        <h2>${escapeHTML(product.name)}</h2>
+
+        <strong>${naira(product.price_ngn)}</strong>
+
+        <p>${escapeHTML(product.description || "Discover this KINGSMADE piece.")}</p>
+
+        ${sizes.length ? `
+          <label for="productSize">SELECT SIZE</label>
+          <select id="productSize">
+            <option value="">Choose size</option>
+            ${sizes.map(s => `<option value="${escapeAttr(s)}">${escapeHTML(s)}</option>`).join("")}
+          </select>
+        ` : ""}
+
+        ${colors.length ? `
+          <label for="productColor">SELECT COLOUR</label>
+          <select id="productColor">
+            <option value="">Choose colour</option>
+            ${colors.map(c => `<option value="${escapeAttr(c)}">${escapeHTML(c)}</option>`).join("")}
+          </select>
+        ` : ""}
+
+        <button id="modalAdd">ADD TO BAG</button>
+      </div>
+
+    </div>
+  `;
+
+  $("productModal").classList.add("open");
+
+  $("modalAdd").onclick = () => {
+    const size = $("productSize")?.value || "";
+    const color = $("productColor")?.value || "";
+
+    if (sizes.length && !size) {
+      alert("Please select a size.");
+      return;
+    }
+
+    if (colors.length && !color) {
+      alert("Please select a colour.");
+      return;
+    }
+
+    closeProduct();
+    addToCart(product.id, size, color);
+  };
+}
+
+function closeProduct() {
+  $("productModal").classList.remove("open");
+}
+
+function setCategory(category) {
+  state.category = category;
+
+  document.querySelectorAll(".filter").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.filter === category
     );
-
-    const plus = document.createElement("button");
-    plus.type = "button";
-    plus.textContent = "+";
-    plus.setAttribute("aria-label", "Increase quantity");
-    plus.addEventListener("click", () =>
-      changeQuantity(item.id, 1)
-    );
-
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.textContent = "Remove";
-    remove.addEventListener("click", () =>
-      removeFromCart(item.id)
-    );
-
-    controls.append(minus, plus, remove);
-    details.append(name, quantity, controls);
-
-    const price = document.createElement("strong");
-    price.textContent = naira(item.price * item.qty);
-
-    line.append(details, price);
-    cartItems.appendChild(line);
   });
 
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.qty,
-    0
-  );
-
-  $("cartTotal").textContent = naira(total);
+  renderProducts();
 }
 
-/* ---------------- CART PANEL ---------------- */
+function initializeSocialLinks() {
+  const links = [
+    ["instagramLink", CONFIG.instagram],
+    ["facebookLink", CONFIG.facebook],
+    ["xLink", CONFIG.x]
+  ];
 
-function toggleCart(force) {
-  const cartPanel = $("cart");
-  const overlay = $("overlay");
+  links.forEach(([id, url]) => {
+    const element = $(id);
 
-  if (!cartPanel || !overlay) return;
-
-  const open = typeof force === "boolean"
-    ? force
-    : !cartPanel.classList.contains("open");
-
-  cartPanel.classList.toggle("open", open);
-  overlay.classList.toggle("open", open);
+    if (url) {
+      element.href = url;
+    } else {
+      element.style.display = "none";
+    }
+  });
 }
 
-/* ---------------- CHECKOUT ---------------- */
+/* EVENT LISTENERS */
 
-function checkout() {
-  if (!cart.length) {
-    alert("Your cart is empty.");
+$("cartOpen").addEventListener("click", openCart);
+$("cartClose").addEventListener("click", closeCart);
+$("cartOverlay").addEventListener("click", closeCart);
+
+$("modalClose").addEventListener("click", closeProduct);
+
+$("productModal").addEventListener("click", event => {
+  if (event.target === $("productModal")) closeProduct();
+});
+
+$("filterToggle").addEventListener("click", () => {
+  $("filterPanel").classList.toggle("filters-hidden");
+});
+
+$("mobileMenu").addEventListener("click", () => {
+  $("mobileNav").classList.toggle("open");
+});
+
+$("mobileNav").querySelectorAll("a").forEach(link => {
+  link.addEventListener("click", () => {
+    $("mobileNav").classList.remove("open");
+  });
+});
+
+document.querySelectorAll(".filter").forEach(button => {
+  button.addEventListener("click", () => {
+    setCategory(button.dataset.filter);
+  });
+});
+
+document.querySelectorAll("[data-category-link]").forEach(link => {
+  link.addEventListener("click", () => {
+    setCategory(link.dataset.categoryLink);
+  });
+});
+
+$("productSearch").addEventListener("input", event => {
+  state.search = event.target.value.trim();
+  renderProducts();
+});
+
+$("searchToggle").addEventListener("click", () => {
+  $("productSearch").focus();
+  $("collection").scrollIntoView({ behavior: "smooth" });
+});
+
+$("sortProducts").addEventListener("change", event => {
+  state.sort = event.target.value;
+  renderProducts();
+});
+
+$("currencySelect").addEventListener("change", event => {
+  if (event.target.value !== "NGN") {
+    alert("Currency conversion will be enabled after connecting a live exchange-rate service. Prices currently display in Nigerian Naira.");
+    event.target.value = "NGN";
+  }
+});
+
+$("checkoutButton").addEventListener("click", () => {
+  if (!state.cart.length) {
+    alert("Your shopping bag is empty.");
     return;
   }
 
   alert(
-    "KINGSMADE checkout is not connected yet. " +
-    "Your cart has been saved. Payment is not available yet."
+    "KINGSMADE checkout is not yet connected to Paystack. Your bag is saved. No payment has been taken."
   );
-}
+});
 
-/* ---------------- INITIALISE STORE ---------------- */
+/* INITIALIZE */
 
+initializeSocialLinks();
 renderCart();
 loadProducts();
