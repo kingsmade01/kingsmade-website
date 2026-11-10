@@ -967,6 +967,22 @@ function renderHeroSlides(){
     '<tr><td>'+Number(s.sort_order)+'</td><td>'+esc(s.title)+'</td><td>'+esc(s.media_type)+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.media_url)+'</td><td>'+statusBadge(Number(s.is_active)===1?'active':'inactive')+'</td><td><button class="btn danger small" onclick="archiveHeroSlide('+Number(s.id)+')">Hide</button></td></tr>'
   ));
 }
+async function editHeroSlide(id){
+  const s=(state.siteContent?.slides||[]).find(x=>Number(x.id)===Number(id));
+  if(!s)return;
+  const title=prompt('Slide title',s.title);if(title===null)return;
+  const subtitle=prompt('Slide subtitle',s.subtitle||'');if(subtitle===null)return;
+  const media_type=prompt('Media type: image or video',s.media_type||'image');if(media_type===null)return;
+  const media_url=prompt('Secure media URL',s.media_url||'');if(media_url===null)return;
+  const poster_url=prompt('Video poster URL (leave blank if not needed)',s.poster_url||'');if(poster_url===null)return;
+  const cta_label=prompt('Button label',s.cta_label||'Shop now');if(cta_label===null)return;
+  const cta_url=prompt('Button destination',s.cta_url||'/shop');if(cta_url===null)return;
+  const sort_order=prompt('Display order',String(s.sort_order??0));if(sort_order===null)return;
+  try{
+    await api('/api/hero-slides/'+id,{method:'PUT',body:JSON.stringify({...s,title,subtitle,media_type,media_url,poster_url,cta_label,cta_url,sort_order:Number(sort_order)})});
+    await loadSiteContent();toast('Hero slide updated.');
+  }catch(e){toast(e.message);}
+}
 async function archiveHeroSlide(id){
   if(!confirm('Hide this hero slide?'))return;
   try{await api('/api/hero-slides/'+id,{method:'DELETE'});await loadSiteContent();toast('Hero slide hidden.');}catch(e){toast(e.message);}
