@@ -904,7 +904,8 @@ function setPage(page){
   if(page==='expenses')renderExpenses();
   if(page==='exchange')renderExchange();
   if(page==='inventory')renderInventory();
-  if(page==='analytics')renderAnalytics();\n  if(page==='cms')loadSiteContent();
+  if(page==='analytics')renderAnalytics();
+  if(page==='cms')loadSiteContent();
 }
 
 function table(headers,rows){
