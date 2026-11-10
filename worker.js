@@ -971,7 +971,8 @@ async function archiveHeroSlide(id){
   if(!confirm('Hide this hero slide?'))return;
   try{await api('/api/hero-slides/'+id,{method:'DELETE'});await loadSiteContent();toast('Hero slide hidden.');}catch(e){toast(e.message);}
 }
-\nfunction notifyNewOrder(){
+
+function notifyNewOrder(){
   try{
     const C=window.AudioContext||window.webkitAudioContext;
     if(!C)return;
@@ -1484,7 +1485,8 @@ $('orderSearch').addEventListener('input',renderOrders);
 $('orderFilter').addEventListener('change',renderOrders);
 $('addExpenseBtn').addEventListener('click',addExpense);
 $('addComplaintBtn').addEventListener('click',addComplaint);
-$('fxRefreshBtn').addEventListener('click',refreshFx);\n$('cmsReloadBtn').addEventListener('click',loadSiteContent);
+$('fxRefreshBtn').addEventListener('click',refreshFx);
+$('cmsReloadBtn').addEventListener('click',loadSiteContent);
 $('siteSettingsForm').addEventListener('submit',async e=>{
   e.preventDefault();const values=Object.fromEntries(new FormData(e.target));
   try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify({settings:values})});$('cmsSettingsMessage').textContent='Saved securely.';await loadSiteContent();toast('Storefront text saved.');}
