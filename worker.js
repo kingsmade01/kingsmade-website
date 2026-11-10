@@ -964,7 +964,7 @@ async function loadSiteContent(){
 function renderHeroSlides(){
   const slides=state.siteContent?.slides||[];
   $('heroSlidesTable').innerHTML=table(['ORDER','TITLE','TYPE','MEDIA','STATUS','ACTION'],slides.map(s=>
-    '<tr><td>'+Number(s.sort_order)+'</td><td>'+esc(s.title)+'</td><td>'+esc(s.media_type)+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.media_url)+'</td><td>'+statusBadge(Number(s.is_active)===1?'active':'inactive')+'</td><td><button class="btn danger small" onclick="archiveHeroSlide('+Number(s.id)+')">Hide</button></td></tr>'
+    '<tr><td>'+Number(s.sort_order)+'</td><td>'+esc(s.title)+'</td><td>'+esc(s.media_type)+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.media_url)+'</td><td>'+statusBadge(Number(s.is_active)===1?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editHeroSlide('+Number(s.id)+')">Edit</button><button class="btn danger small" onclick="archiveHeroSlide('+Number(s.id)+')">Hide</button></div></td></tr>'
   ));
 }
 async function editHeroSlide(id){
