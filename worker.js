@@ -891,7 +891,8 @@ function setPage(page){
     expenses:'Expenses',
     exchange:'Exchange rate',
     inventory:'Inventory control',
-    analytics:'Business analytics',\n    cms:'Storefront manager'
+    analytics:'Business analytics',
+    cms:'Storefront manager'
   })[page]||'Overview';
 
   $('sidebar').classList.remove('open');
@@ -938,7 +939,8 @@ async function loadAll(){
     state.expenses=x.expenses||[];
     state.complaints=co.complaints||[];
     state.fx=fx;
-    state.inventory=inv||{products:[],movements:[]};\n    state.siteContent=site||{settings:{},slides:[]};
+    state.inventory=inv||{products:[],movements:[]};
+    state.siteContent=site||{settings:{},slides:[]};
 
     renderOverview();
     renderProducts();
