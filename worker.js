@@ -1,6 +1,22 @@
-const SESSION_COOKIE = "km_admin_session";
-const SESSION_HOURS = 8;
+var __freeze = Object.freeze;
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __template = (cooked, raw) => __freeze(__defProp(cooked, "raw", { value: __freeze(raw || cooked.slice()) }));
 
+// worker.js
+var SESSION_COOKIE = "km_admin_session";
+var SESSION_HOURS = 8;
+var MAX_FAILED_LOGINS = 5;
+var LOGIN_WINDOW_MS = 15 * 60 * 1000;
+var authTablesReady = null;
+function ensureAuthTables(env) {
+ if (!authTablesReady) authTablesReady = env.DB.batch([
+  env.DB.prepare("CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT NOT NULL, attempted_at INTEGER NOT NULL)"),
+  env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts (ip, attempted_at)"),
+  env.DB.prepare("CREATE TABLE IF NOT EXISTS revoked_sessions (nonce TEXT PRIMARY KEY, expires_at INTEGER NOT NULL)")
+ ]).catch(e => { authTablesReady = null; throw e; });
+ return authTablesReady;
+}
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -11,7 +27,7 @@ function json(data, status = 200, extraHeaders = {}) {
     }
   });
 }
-
+__name(json, "json");
 function html(content, status = 200) {
   return new Response(content, {
     status,
@@ -19,25 +35,27 @@ function html(content, status = 200) {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "same-origin",
-      "X-Frame-Options": "DENY"
+      "Referrer-Policy": "no-referrer",
+      "X-Frame-Options": "DENY",
+      "Content-Security-Policy": "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
     }
   });
 }
-
+__name(html, "html");
 function b64url(bytes) {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
-
+__name(b64url, "b64url");
 function fromB64url(value) {
   const base = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base + "=".repeat((4 - (base.length % 4)) % 4);
+  const padded = base + "=".repeat((4 - base.length % 4) % 4);
   const binary = atob(padded);
-  return Uint8Array.from(binary, c => c.charCodeAt(0));
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
-
+__name(fromB64url, "fromB64url");
 async function sign(value, secret) {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -50,67 +68,55 @@ async function sign(value, secret) {
     await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value))
   ));
 }
-
-function safeEqual(a, b) {
-  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+__name(sign, "sign");
+async function safeEqual(a, b) {
+ const enc=new TextEncoder();
+ const [ha,hb]=await Promise.all([crypto.subtle.digest("SHA-256",enc.encode(String(a))),crypto.subtle.digest("SHA-256",enc.encode(String(b)))]);
+ const x=new Uint8Array(ha),y=new Uint8Array(hb);let diff=0;
+ for(let i=0;i<x.length;i++)diff|=x[i]^y[i];return diff===0;
 }
-
+__name(safeEqual,"safeEqual");
 function getCookie(request, name) {
   const cookie = request.headers.get("Cookie") || "";
   for (const part of cookie.split(";")) {
     const index = part.indexOf("=");
     if (index < 0) continue;
     if (part.slice(0, index).trim() === name) {
-      return decodeURIComponent(part.slice(index + 1).trim());
+      return part.slice(index + 1).trim();
     }
   }
   return "";
 }
-
+__name(getCookie, "getCookie");
 async function createSession(secret) {
-  const payload = b64url(new TextEncoder().encode(JSON.stringify({
-    exp: Date.now() + SESSION_HOURS * 3600 * 1000,
-    nonce: crypto.randomUUID()
-  })));
-  return `${payload}.${await sign(payload, secret)}`;
+ const expiry=String(Date.now()+SESSION_HOURS*3600*1e3);
+ const nonce=b64url(crypto.getRandomValues(new Uint8Array(18)));
+ const signature=await sign(expiry+"."+nonce,secret);
+ return {token:expiry+"."+nonce+"."+signature,expiry:Number(expiry),nonce};
 }
-
-async function validSession(request, secret) {
-  const token = getCookie(request, SESSION_COOKIE);
-  if (!token || !secret) return false;
-  const parts = token.split(".");
-  if (parts.length !== 2) return false;
-
-  const expected = await sign(parts[0], secret);
-  if (!safeEqual(parts[1], expected)) return false;
-
-  try {
-    const payload = JSON.parse(new TextDecoder().decode(fromB64url(parts[0])));
-    return Number(payload.exp) > Date.now();
-  } catch {
-    return false;
-  }
+__name(createSession,"createSession");
+async function readSession(request,env) {
+ const token=getCookie(request,SESSION_COOKIE);if(!token||!env.SESSION_SECRET)return null;
+ const parts=token.split(".");if(parts.length!==3)return null;
+ const [expiry,nonce,signature]=parts;
+ if(!/^\d+$/.test(expiry)||!/^[A-Za-z0-9_-]{16,64}$/.test(nonce)||!signature||Number(expiry)<=Date.now())return null;
+ try{const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(env.SESSION_SECRET),{name:"HMAC",hash:"SHA-256"},false,["verify"]);const ok=await crypto.subtle.verify("HMAC",key,fromB64url(signature),new TextEncoder().encode(expiry+"."+nonce));return ok?{expiry:Number(expiry),nonce}:null;}catch{return null;}
 }
-
+__name(readSession,"readSession");
+async function validSession(request,env) {
+ const session=await readSession(request,env);if(!session)return false;
+ try{await ensureAuthTables(env);const revoked=await env.DB.prepare("SELECT 1 AS hit FROM revoked_sessions WHERE nonce=? AND expires_at>=? LIMIT 1").bind(session.nonce,Date.now()).first();return !revoked;}catch{return false;}
+}
+__name(validSession,"validSession");
 function cookieHeader(value, maxAge) {
   return `${SESSION_COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
 }
-
+__name(cookieHeader, "cookieHeader");
 function checkOrigin(request) {
-  const origin = request.headers.get("Origin");
-  if (!origin) return true;
-  try {
-    const parsed = new URL(origin);
-    const own = new URL(request.url);
-    return parsed.host === own.host && parsed.protocol === own.protocol;
-  } catch {
-    return false;
-  }
+ const origin=request.headers.get("Origin");if(!origin)return false;
+ try{const parsed=new URL(origin),own=new URL(request.url);return parsed.host===own.host&&parsed.protocol===own.protocol;}catch{return false;}
 }
-
+__name(checkOrigin, "checkOrigin");
 async function bodyJSON(request) {
   try {
     return await request.json();
@@ -118,25 +124,24 @@ async function bodyJSON(request) {
     throw new Error("Request body must be valid JSON.");
   }
 }
-
+__name(bodyJSON, "bodyJSON");
 function num(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
-
-function cleanText(value, max = 5000) {
+__name(num, "num");
+function cleanText(value, max = 5e3) {
   return String(value ?? "").trim().slice(0, max);
 }
-
+__name(cleanText, "cleanText");
 async function latestRate(env) {
   return await env.DB.prepare(
     "SELECT rate, rate_date, fetched_at, source FROM exchange_rates WHERE base_currency='USD' AND quote_currency='NGN' ORDER BY rate_date DESC LIMIT 1"
   ).first();
 }
-
+__name(latestRate, "latestRate");
 async function refreshRate(env) {
   if (!env.FXAPI_KEY) throw new Error("FXAPI_KEY is not configured in this Worker.");
-
   const response = await fetch(
     "https://api.fxapi.com/v1/latest?base_currency=USD&currencies=NGN",
     {
@@ -146,22 +151,16 @@ async function refreshRate(env) {
       }
     }
   );
-
   if (!response.ok) {
     throw new Error(`FXAPI returned HTTP ${response.status}. The last saved rate has been preserved.`);
   }
-
   const payload = await response.json();
   const rate = Number(payload?.data?.NGN?.value);
-
   if (!Number.isFinite(rate) || rate <= 0) {
     throw new Error("FXAPI response did not contain a valid USD/NGN rate.");
   }
-
-  const stamp = String(payload?.meta?.last_updated_at || new Date().toISOString());
-  const rateDate = /^\d{4}-\d{2}-\d{2}/.exec(stamp)?.[0] ||
-    new Date().toISOString().slice(0, 10);
-
+  const stamp = String(payload?.meta?.last_updated_at || (/* @__PURE__ */ new Date()).toISOString());
+  const rateDate = /^\d{4}-\d{2}-\d{2}/.exec(stamp)?.[0] || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   await env.DB.prepare(`
     INSERT INTO exchange_rates
       (rate_date, base_currency, quote_currency, rate, source, fetched_at)
@@ -171,157 +170,121 @@ async function refreshRate(env) {
       source='fxapi',
       fetched_at=CURRENT_TIMESTAMP
   `).bind(rateDate, rate).run();
-
   return {
     rate,
     rate_date: rateDate,
-    fetched_at: new Date().toISOString(),
+    fetched_at: (/* @__PURE__ */ new Date()).toISOString(),
     source: "fxapi"
   };
 }
-
+__name(refreshRate, "refreshRate");
 async function requireAuth(request, env) {
   if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
     return json({
       error: "SESSION_SECRET must be configured with at least 32 characters."
     }, 503);
   }
-
-  if (!(await validSession(request, env.SESSION_SECRET))) {
+  if (!await validSession(request, env)) {
     return json({
       error: "Your session has expired. Please sign in again."
     }, 401);
   }
-
   return null;
 }
-
+__name(requireAuth, "requireAuth");
 async function api(request, env, url) {
   const path = url.pathname;
   const method = request.method.toUpperCase();
-
   if (path === "/api/health" && method === "GET") {
     return json({
       ok: true,
       service: "KINGSMADE PRIVATE COMMAND CENTER",
-      database: Boolean(env.DB)
+      database: Boolean(env.DB),
+      paystack_configured: Boolean(env.PAYSTACK_SECRET_KEY),
+      exchange_rate_provider_configured: Boolean(env.FXAPI_KEY)
     });
   }
-
   if (path === "/api/login" && method === "POST") {
-    if (!checkOrigin(request)) return json({ error: "Request origin rejected." }, 403);
-
-    if (!env.ADMIN_PASSWORD || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
-      return json({ error: "Admin secrets are not configured correctly." }, 503);
-    }
-
-    const body = await bodyJSON(request);
-
-    if (!safeEqual(String(body.password || ""), String(env.ADMIN_PASSWORD))) {
-      return json({ error: "Incorrect password." }, 401);
-    }
-
-    const token = await createSession(env.SESSION_SECRET);
-
-    return json({ ok: true }, 200, {
-      "Set-Cookie": cookieHeader(token, SESSION_HOURS * 3600)
-    });
+    if(!checkOrigin(request))return json({error:"Request origin rejected."},403);
+    if(!env.ADMIN_PASSWORD||!env.SESSION_SECRET||env.SESSION_SECRET.length<32)return json({error:"Admin secrets are not configured correctly."},503);
+    const body=await bodyJSON(request);if(!body||typeof body.password!=="string"||body.password.length>256)return json({error:"Invalid credentials."},401);
+    const now=Date.now(),ip=request.headers.get("CF-Connecting-IP")||"unknown";
+    const ipHash=b64url(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(ip))));
+    try{await ensureAuthTables(env);await env.DB.prepare("DELETE FROM login_attempts WHERE attempted_at<?").bind(now-LOGIN_WINDOW_MS).run();const attempts=await env.DB.prepare("SELECT COUNT(*) AS failures FROM login_attempts WHERE ip=? AND attempted_at>=?").bind(ipHash,now-LOGIN_WINDOW_MS).first();if(Number(attempts?.failures||0)>=MAX_FAILED_LOGINS)return json({error:"Too many failed attempts. Please wait 15 minutes and try again."},429,{"Retry-After":String(LOGIN_WINDOW_MS/1000)});}catch{return json({error:"Login is temporarily unavailable."},503);}
+    if(!await safeEqual(body.password,env.ADMIN_PASSWORD)){try{await env.DB.prepare("INSERT INTO login_attempts (ip,attempted_at) VALUES (?,?)").bind(ipHash,now).run();}catch{}return json({error:"Incorrect password."},401);}
+    try{await env.DB.prepare("DELETE FROM login_attempts WHERE ip=?").bind(ipHash).run();}catch{}
+    const session=await createSession(env.SESSION_SECRET);return json({ok:true},200,{"Set-Cookie":cookieHeader(session.token,SESSION_HOURS*3600)});
   }
-
   if (path === "/api/logout" && method === "POST") {
-    if (!checkOrigin(request)) return json({ error: "Request origin rejected." }, 403);
-
-    return json({ ok: true }, 200, {
-      "Set-Cookie": cookieHeader("", 0)
-    });
+    if(!checkOrigin(request))return json({error:"Request origin rejected."},403);
+    const session=await readSession(request,env);
+    if(session){try{await ensureAuthTables(env);await env.DB.batch([env.DB.prepare("DELETE FROM revoked_sessions WHERE expires_at<?").bind(Date.now()),env.DB.prepare("INSERT OR IGNORE INTO revoked_sessions (nonce,expires_at) VALUES (?,?)").bind(session.nonce,session.expiry)]);}catch{return json({error:"Could not safely revoke the session. Retry sign out."},503);}}
+    return json({ok:true},200,{"Set-Cookie":cookieHeader("",0)});
   }
-
-  const authError = await requireAuth(request, env);
   if (authError) return authError;
-
   if (method !== "GET" && !checkOrigin(request)) {
     return json({ error: "Request origin rejected." }, 403);
   }
-
   if (path === "/api/me" && method === "GET") {
     return json({ authenticated: true });
   }
-
   if (path === "/api/dashboard" && method === "GET") {
-    const [sales, expense, stock, orders, recent] = await Promise.all([
-      env.DB.prepare(`
-        SELECT COALESCE(SUM(total_ngn),0) AS revenue, COUNT(*) AS paid_orders
-        FROM orders WHERE LOWER(payment_status)='paid'
-      `).first(),
-
-      env.DB.prepare(
-        "SELECT COALESCE(SUM(amount_ngn),0) AS total FROM expenses"
-      ).first(),
-
-      env.DB.prepare(`
-        SELECT
-          COALESCE(SUM(stock_quantity * cost_price_ngn),0) AS cost_value,
-          COALESCE(SUM(stock_quantity * price_ngn),0) AS retail_value,
-          COALESCE(SUM(stock_quantity),0) AS units
-        FROM products WHERE is_active=1
-      `).first(),
-
-      env.DB.prepare(`
-        SELECT COUNT(*) AS total,
-          SUM(CASE WHEN LOWER(payment_status)='pending' THEN 1 ELSE 0 END) AS pending
-        FROM orders
-      `).first(),
-
-      env.DB.prepare(`
-        SELECT id, order_number, customer_name, status, payment_status, total_ngn, created_at
-        FROM orders ORDER BY id DESC LIMIT 8
-      `).all()
+    const [sales, expense, stock, orders, recent, dailySales, topProducts] = await Promise.all([
+      env.DB.prepare("SELECT COALESCE(SUM(total_ngn),0) AS revenue, COUNT(*) AS paid_orders FROM orders WHERE LOWER(payment_status)=?").bind("paid").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(amount_ngn),0) AS total FROM expenses").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(stock_quantity * cost_price_ngn),0) AS cost_value, COALESCE(SUM(stock_quantity * price_ngn),0) AS retail_value, COALESCE(SUM(stock_quantity),0) AS units FROM products WHERE is_active=1").first(),
+      env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(payment_status)=? THEN 1 ELSE 0 END) AS pending FROM orders").bind("pending").first(),
+      env.DB.prepare("SELECT id, order_number, customer_name, status, payment_status, total_ngn, created_at FROM orders ORDER BY id DESC LIMIT 8").all(),
+      env.DB.prepare("SELECT date(created_at) AS sale_date, COALESCE(SUM(total_ngn),0) AS revenue_ngn, COUNT(*) AS paid_orders FROM orders WHERE LOWER(payment_status)=? GROUP BY date(created_at) ORDER BY sale_date DESC LIMIT 30").bind("paid").all(),
+      env.DB.prepare("SELECT oi.product_name, COALESCE(SUM(oi.quantity),0) AS units_sold, COALESCE(SUM(oi.subtotal_ngn),0) AS revenue_ngn FROM order_items oi INNER JOIN orders o ON o.id=oi.order_id WHERE LOWER(o.payment_status)=? GROUP BY oi.product_name ORDER BY revenue_ngn DESC LIMIT 8").bind("paid").all()
     ]);
-
     const cogs = await env.DB.prepare(`
-      SELECT COALESCE(SUM(oi.quantity * oi.unit_cost_ngn),0) AS total
+      SELECT
+        COALESCE(SUM(oi.quantity * oi.unit_cost_ngn),0) AS total,
+        COALESCE(SUM(CASE WHEN oi.unit_cost_ngn IS NULL OR oi.unit_cost_ngn <= 0 THEN 1 ELSE 0 END),0) AS missing_cost_lines
       FROM order_items oi
       INNER JOIN orders o ON o.id=oi.order_id
       WHERE LOWER(o.payment_status)='paid'
     `).first();
-
+    const paidOrdersWithoutItems = await env.DB.prepare(`
+      SELECT COUNT(*) AS total
+      FROM orders o
+      WHERE LOWER(o.payment_status)='paid'
+        AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id=o.id)
+    `).first();
     const revenue = num(sales?.revenue);
     const expenses = num(expense?.total);
     const costOfGoods = num(cogs?.total);
-
+    const missingCostLines = num(cogs?.missing_cost_lines);
+    const paidOrdersWithoutItemCount = num(paidOrdersWithoutItems?.total);
+    const profitComplete = missingCostLines === 0 && paidOrdersWithoutItemCount === 0;
     return json({
       revenue_ngn: revenue,
       paid_orders: num(sales?.paid_orders),
       expenses_ngn: expenses,
       cogs_ngn: costOfGoods,
-      estimated_profit_ngn: revenue - costOfGoods - expenses,
+      estimated_profit_ngn: profitComplete ? revenue - costOfGoods - expenses : null,
+      profit_complete: profitComplete,
+      missing_cost_lines: missingCostLines,
+      paid_orders_without_items: paidOrdersWithoutItemCount,
       inventory_cost_ngn: num(stock?.cost_value),
       inventory_retail_ngn: num(stock?.retail_value),
       stock_units: num(stock?.units),
       total_orders: num(orders?.total),
       pending_orders: num(orders?.pending),
       recent_orders: recent.results || [],
-      profit_note: "Estimated profit = paid order revenue − recorded item costs − recorded expenses. Missing historical item costs may understate profit."
+      daily_sales: dailySales.results || [],
+      top_products: topProducts.results || [],
+      profit_note: "Estimated profit = paid order revenue \u2212 recorded item costs \u2212 recorded expenses. Missing historical item costs may understate profit."
     });
   }
-
   if (path === "/api/fx" && method === "GET") {
-    const rate = await latestRate(env);
-
-    const history = await env.DB.prepare(`
-      SELECT rate_date, rate FROM exchange_rates
-      WHERE base_currency='USD' AND quote_currency='NGN'
-      AND rate_date >= date('now','-90 days')
-      ORDER BY rate_date ASC
-    `).all();
-
-    return json({
-      latest: rate || null,
-      history: history.results || [],
-      update_frequency: "Daily reference rate on FXAPI Free plan"
-    });
+    let rate=await latestRate(env);
+    const fetchedAt=Date.parse(rate?.fetched_at||"");
+    if(env.FXAPI_KEY&&(!rate||!Number.isFinite(fetchedAt)||Date.now()-fetchedAt>24*60*60*1000)){try{await refreshRate(env);rate=await latestRate(env);}catch{}}
+    const history=await env.DB.prepare("SELECT rate_date,rate FROM exchange_rates WHERE base_currency='USD' AND quote_currency='NGN' AND rate_date>=date('now','-90 days') ORDER BY rate_date ASC").all();
+    return json({latest:rate||null,history:history.results||[],update_frequency:"Daily reference rate on FXAPI Free plan"});
   }
-
   if (path === "/api/fx/refresh" && method === "POST") {
     try {
       return json({ latest: await refreshRate(env) });
@@ -332,7 +295,6 @@ async function api(request, env, url) {
       }, 502);
     }
   }
-
   if (path === "/api/products" && method === "GET") {
     const result = await env.DB.prepare(`
       SELECT id, name, description, price_ngn, price_usd, cost_price_ngn,
@@ -340,197 +302,104 @@ async function api(request, env, url) {
         is_active, created_at, updated_at
       FROM products ORDER BY id DESC
     `).all();
-
     return json({ products: result.results || [] });
   }
-
   if (path === "/api/products" && method === "POST") {
-    const b = await bodyJSON(request);
-    const name = cleanText(b.name, 180);
-
-    if (!name) return json({ error: "Product name is required." }, 400);
-
-    const rate = await latestRate(env);
-    const usd = b.price_usd === "" || b.price_usd == null
-      ? null
-      : num(b.price_usd, -1);
-
-    if (usd !== null && (usd < 0 || !rate?.rate)) {
-      return json({
-        error: "A valid saved FX rate is required before saving a USD price. Refresh the exchange rate first."
-      }, 400);
-    }
-
-    const ngn = usd !== null
-      ? Math.round(usd * Number(rate.rate))
-      : Math.max(0, Math.round(num(b.price_ngn)));
-
-    const sizes = Array.isArray(b.sizes) ? b.sizes : [];
-    const colors = Array.isArray(b.colors) ? b.colors : [];
-
-    const result = await env.DB.prepare(`
-      INSERT INTO products
-        (name, description, price_ngn, price_usd, category, image_url,
-         sizes_json, colors_json, stock_quantity, is_active, cost_price_ngn, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).bind(
-      name,
-      cleanText(b.description),
-      ngn,
-      usd,
-      cleanText(b.category, 100),
-      cleanText(b.image_url, 2000),
-      JSON.stringify(sizes.map(x => cleanText(x, 80)).filter(Boolean)),
-      JSON.stringify(colors.map(x => cleanText(x, 80)).filter(Boolean)),
-      Math.max(0, Math.round(num(b.stock_quantity))),
-      b.is_active === false ? 0 : 1,
-      Math.max(0, Math.round(num(b.cost_price_ngn)))
-    ).run();
-
-    return json({
-      ok: true,
-      id: result.meta?.last_row_id,
-      price_ngn: ngn
-    });
+    const b=await bodyJSON(request),name=cleanText(b.name,180);if(!name)return json({error:"Product name is required."},400);
+    const rate=await latestRate(env),usd=b.price_usd===""||b.price_usd==null?null:num(b.price_usd,-1);
+    if(usd!==null&&(usd<0||!rate?.rate))return json({error:"A valid saved FX rate is required before saving a USD price. Refresh the exchange rate first."},400);
+    const ngn=usd!==null?Math.round(usd*Number(rate.rate)):Math.max(0,Math.round(num(b.price_ngn)));
+    const sizes=Array.isArray(b.sizes)?b.sizes:[],colors=Array.isArray(b.colors)?b.colors:[];
+    const stock=Math.max(0,Math.round(num(b.stock_quantity))),cost=Math.max(0,Math.round(num(b.cost_price_ngn)));
+    const results=await env.DB.batch([
+      env.DB.prepare("INSERT INTO products (name,description,price_ngn,price_usd,category,image_url,sizes_json,colors_json,stock_quantity,is_active,cost_price_ngn,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)").bind(name,cleanText(b.description),ngn,usd,cleanText(b.category,100),cleanText(b.image_url,2000),JSON.stringify(sizes.map(x=>cleanText(x,80)).filter(Boolean)),JSON.stringify(colors.map(x=>cleanText(x,80)).filter(Boolean)),stock,b.is_active===false?0:1,cost),
+      env.DB.prepare("INSERT INTO inventory_movements (product_id,movement_type,quantity,note) SELECT last_insert_rowid(),?,?,? WHERE ?>0").bind("in",stock,"Opening stock",stock)
+    ]);
+    return json({ok:true,id:results[0]?.meta?.last_row_id,price_ngn:ngn});
   }
-
   const productMatch = path.match(/^\/api\/products\/(\d+)$/);
-
   if (productMatch && method === "PUT") {
-    const id = Number(productMatch[1]);
-    const b = await bodyJSON(request);
-
-    const existing = await env.DB.prepare(
-      "SELECT id FROM products WHERE id=?"
-    ).bind(id).first();
-
-    if (!existing) return json({ error: "Product not found." }, 404);
-
-    const name = cleanText(b.name, 180);
-    if (!name) return json({ error: "Product name is required." }, 400);
-
-    const rate = await latestRate(env);
-    const usd = b.price_usd === "" || b.price_usd == null
-      ? null
-      : num(b.price_usd, -1);
-
-    if (usd !== null && (usd < 0 || !rate?.rate)) {
-      return json({
-        error: "A valid saved FX rate is required before saving a USD price."
-      }, 400);
-    }
-
-    const ngn = usd !== null
-      ? Math.round(usd * Number(rate.rate))
-      : Math.max(0, Math.round(num(b.price_ngn)));
-
-    await env.DB.prepare(`
-      UPDATE products SET
-        name=?, description=?, price_ngn=?, price_usd=?, category=?,
-        image_url=?, sizes_json=?, colors_json=?, stock_quantity=?,
-        is_active=?, cost_price_ngn=?, updated_at=CURRENT_TIMESTAMP
-      WHERE id=?
-    `).bind(
-      name,
-      cleanText(b.description),
-      ngn,
-      usd,
-      cleanText(b.category, 100),
-      cleanText(b.image_url, 2000),
-      JSON.stringify(Array.isArray(b.sizes) ? b.sizes.map(x => cleanText(x, 80)).filter(Boolean) : []),
-      JSON.stringify(Array.isArray(b.colors) ? b.colors.map(x => cleanText(x, 80)).filter(Boolean) : []),
-      Math.max(0, Math.round(num(b.stock_quantity))),
-      b.is_active ? 1 : 0,
-      Math.max(0, Math.round(num(b.cost_price_ngn))),
-      id
-    ).run();
-
-    return json({ ok: true, price_ngn: ngn });
+    const id=Number(productMatch[1]),b=await bodyJSON(request);
+    const existing=await env.DB.prepare("SELECT id,stock_quantity FROM products WHERE id=?").bind(id).first();
+    if(!existing)return json({error:"Product not found."},404);
+    const name=cleanText(b.name,180);if(!name)return json({error:"Product name is required."},400);
+    const rate=await latestRate(env),usd=b.price_usd===""||b.price_usd==null?null:num(b.price_usd,-1);
+    if(usd!==null&&(usd<0||!rate?.rate))return json({error:"A valid saved FX rate is required before saving a USD price."},400);
+    const ngn=usd!==null?Math.round(usd*Number(rate.rate)):Math.max(0,Math.round(num(b.price_ngn)));
+    const oldStock=Math.max(0,Math.round(num(existing.stock_quantity))),newStock=b.stock_quantity===undefined?oldStock:Math.max(0,Math.round(num(b.stock_quantity,oldStock))),delta=newStock-oldStock;
+    const productUpdate=env.DB.prepare("UPDATE products SET name=?,description=?,price_ngn=?,price_usd=?,category=?,image_url=?,sizes_json=?,colors_json=?,stock_quantity=?,is_active=?,cost_price_ngn=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(name,cleanText(b.description),ngn,usd,cleanText(b.category,100),cleanText(b.image_url,2000),JSON.stringify(Array.isArray(b.sizes)?b.sizes.map(x=>cleanText(x,80)).filter(Boolean):[]),JSON.stringify(Array.isArray(b.colors)?b.colors.map(x=>cleanText(x,80)).filter(Boolean):[]),newStock,b.is_active===false?0:1,Math.max(0,Math.round(num(b.cost_price_ngn))),id);
+    const movement=env.DB.prepare("INSERT INTO inventory_movements (product_id,movement_type,quantity,note) SELECT ?,?,?,? WHERE ?>0").bind(id,delta>=0?"in":"out",Math.abs(delta),"Stock adjusted from product editor",Math.abs(delta));
+    await env.DB.batch([productUpdate,movement]);
+    return json({ok:true,price_ngn:ngn,stock_quantity:newStock});
   }
-
   if (productMatch && method === "DELETE") {
-    const id = Number(productMatch[1]);
-
-    const used = await env.DB.prepare(
-      "SELECT COUNT(*) AS count FROM order_items WHERE product_id=?"
-    ).bind(id).first();
-
-    if (num(used?.count) > 0) {
-      return json({
-        error: "This product appears in order history. Deactivate it instead to preserve historical records."
-      }, 409);
-    }
-
-    await env.DB.prepare("DELETE FROM products WHERE id=?").bind(id).run();
-    return json({ ok: true });
+    const id=Number(productMatch[1]);
+    const result=await env.DB.prepare("UPDATE products SET is_active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(id).run();
+    if(!result.meta?.changes)return json({error:"Product not found."},404);
+    return json({ok:true,deactivated:true});
   }
-
   if (path === "/api/orders" && method === "GET") {
     const result = await env.DB.prepare(`
       SELECT id, order_number, customer_name, status, payment_status, total_ngn, created_at
       FROM orders ORDER BY id DESC LIMIT 200
     `).all();
-
     return json({ orders: result.results || [] });
   }
-
   const orderMatch = path.match(/^\/api\/orders\/(\d+)$/);
-
   if (orderMatch && method === "PATCH") {
     const b = await bodyJSON(request);
     const status = cleanText(b.status, 30).toLowerCase();
-    const allowed = ["pending", "processing", "shipped", "delivered", "cancelled"];
-
+    const allowed = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
     if (!allowed.includes(status)) {
       return json({ error: "Invalid order status." }, 400);
     }
-
     await env.DB.prepare(
       "UPDATE orders SET status=? WHERE id=?"
     ).bind(status, Number(orderMatch[1])).run();
-
     return json({ ok: true });
   }
-
-  if (path === "/api/customers" && method === "GET") {
-    const result = await env.DB.prepare(`
-      SELECT customer_name, COUNT(*) AS order_count,
-        COALESCE(SUM(CASE WHEN LOWER(payment_status)='paid' THEN total_ngn ELSE 0 END),0) AS paid_total_ngn,
-        MAX(created_at) AS last_order
-      FROM orders GROUP BY customer_name
-      ORDER BY last_order DESC LIMIT 300
-    `).all();
-
-    return json({
-      customers: result.results || [],
-      note: "Your current orders table stores customer names only; email addresses and phone numbers are not available in this database."
-    });
+  if (path === "/api/inventory" && method === "GET") {
+    const [productResult,movementResult]=await Promise.all([
+      env.DB.prepare("SELECT id,name,category,price_ngn,cost_price_ngn,stock_quantity,is_active FROM products ORDER BY name COLLATE NOCASE").all(),
+      env.DB.prepare("SELECT m.id,m.product_id,p.name AS product_name,m.movement_type,m.quantity,m.note,m.created_at FROM inventory_movements m LEFT JOIN products p ON p.id=m.product_id ORDER BY m.created_at DESC,m.id DESC LIMIT 100").all()
+    ]);
+    return json({products:productResult.results||[],movements:movementResult.results||[]});
   }
-
+  if (path === "/api/inventory" && method === "POST") {
+    const body=await bodyJSON(request),productId=Number(body?.product_id),type=body?.movement_type,quantity=Number(body?.quantity),note=cleanText(body?.note,500);
+    if(!Number.isSafeInteger(productId)||productId<1||!["in","out"].includes(type)||!Number.isSafeInteger(quantity)||quantity<1||quantity>1000000)return json({error:"Choose a product, movement type, and whole quantity greater than zero."},400);
+    const delta=type==="in"?quantity:-quantity;
+    try {
+      const results=await env.DB.batch([
+        env.DB.prepare("UPDATE products SET stock_quantity=stock_quantity+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND (?=\'in\' OR stock_quantity>=?)").bind(delta,productId,type,quantity),
+        env.DB.prepare("INSERT INTO inventory_movements (product_id,movement_type,quantity,note) SELECT ?,?,?,? WHERE changes()>0").bind(productId,type,quantity,note||(type==="in"?"Stock received":"Stock removed"))
+      ]);
+      if(!results[0]?.meta?.changes)return json({error:"Product not found or stock is insufficient for this stock-out."},400);
+      if(!results[1]?.meta?.changes)return json({error:"Movement log was not saved. Inspect inventory before retrying."},500);
+      return json({ok:true,product_id:productId,movement_type:type,quantity});
+    } catch { return json({error:"Unable to record inventory movement."},500); }
+  }
+  if (path === "/api/customers" && method === "GET") {
+    const result=await env.DB.prepare("SELECT MAX(customer_name) AS customer_name,MAX(customer_email) AS customer_email,MAX(customer_phone) AS customer_phone,COUNT(*) AS order_count,COALESCE(SUM(CASE WHEN LOWER(payment_status)=\'paid\' THEN total_ngn ELSE 0 END),0) AS paid_total_ngn,MAX(created_at) AS last_order FROM orders GROUP BY CASE WHEN NULLIF(TRIM(customer_email),\'\') IS NOT NULL THEN LOWER(TRIM(customer_email)) ELSE LOWER(TRIM(COALESCE(customer_name,\'\'))||\'|\'||TRIM(COALESCE(customer_phone,\'\'))) END ORDER BY last_order DESC LIMIT 300").all();
+    return json({customers:result.results||[]});
+  }
   if (path === "/api/expenses" && method === "GET") {
     const result = await env.DB.prepare(`
       SELECT id, description, amount_ngn, category, expense_date, created_at
       FROM expenses ORDER BY expense_date DESC, id DESC LIMIT 300
     `).all();
-
     return json({ expenses: result.results || [] });
   }
-
   if (path === "/api/expenses" && method === "POST") {
     const b = await bodyJSON(request);
     const description = cleanText(b.description, 250);
     const amount = Math.round(num(b.amount_ngn, -1));
-
     if (!description || amount < 0) {
       return json({
         error: "Enter an expense description and a valid non-negative amount."
       }, 400);
     }
-
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.expense_date || ""))
-      ? b.expense_date
-      : new Date().toISOString().slice(0, 10);
-
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.expense_date || "")) ? b.expense_date : (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const result = await env.DB.prepare(`
       INSERT INTO expenses (description, amount_ngn, category, expense_date)
       VALUES (?, ?, ?, ?)
@@ -540,38 +409,29 @@ async function api(request, env, url) {
       cleanText(b.category, 100),
       date
     ).run();
-
     return json({ ok: true, id: result.meta?.last_row_id });
   }
-
   const expenseMatch = path.match(/^\/api\/expenses\/(\d+)$/);
-
   if (expenseMatch && method === "DELETE") {
     await env.DB.prepare(
       "DELETE FROM expenses WHERE id=?"
     ).bind(Number(expenseMatch[1])).run();
-
     return json({ ok: true });
   }
-
   if (path === "/api/complaints" && method === "GET") {
     const result = await env.DB.prepare(`
       SELECT id, customer_name, order_number, subject, message, status, created_at
       FROM complaints ORDER BY id DESC LIMIT 300
     `).all();
-
     return json({ complaints: result.results || [] });
   }
-
   if (path === "/api/complaints" && method === "POST") {
     const b = await bodyJSON(request);
     const subject = cleanText(b.subject, 200);
-    const message = cleanText(b.message, 5000);
-
+    const message = cleanText(b.message, 5e3);
     if (!subject || !message) {
       return json({ error: "Complaint subject and message are required." }, 400);
     }
-
     const result = await env.DB.prepare(`
       INSERT INTO complaints
         (customer_name, order_number, subject, message, status)
@@ -582,31 +442,25 @@ async function api(request, env, url) {
       subject,
       message
     ).run();
-
     return json({ ok: true, id: result.meta?.last_row_id });
   }
-
   const complaintMatch = path.match(/^\/api\/complaints\/(\d+)$/);
-
   if (complaintMatch && method === "PATCH") {
     const b = await bodyJSON(request);
     const status = cleanText(b.status, 30);
-
     if (!["open", "in_progress", "resolved"].includes(status)) {
       return json({ error: "Invalid complaint status." }, 400);
     }
-
     await env.DB.prepare(
       "UPDATE complaints SET status=? WHERE id=?"
     ).bind(status, Number(complaintMatch[1])).run();
-
     return json({ ok: true });
   }
-
   return json({ error: "API route not found." }, 404);
 }
-
-const PAGE = String.raw`<!doctype html>
+__name(api, "api");
+var _a;
+var PAGE = String.raw(_a || (_a = __template([`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -614,9 +468,11 @@ const PAGE = String.raw`<!doctype html>
 <meta name="theme-color" content="#111110">
 <title>KINGSMADE | Private Command Center</title>
 <style>
-:root{--bg:#10100f;--panel:#191917;--panel2:#20201d;--line:#30302b;--gold:#c8ad78;--gold2:#e0c99b;--ivory:#f2eee5;--muted:#aaa69d;--green:#78b99a;--red:#d77d78;--radius:15px}
+:root{--bg:#07182d;--panel:#0d2340;--panel2:#142d4c;--line:#29435f;--gold:#c8ad78;--gold2:#e0c99b;--ivory:#f4f0e8;--muted:#b7c5d6;--green:#78b99a;--red:#d77d78;--radius:15px}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
+body{margin:0;background:radial-gradient(ellipse at 18% 12%,#17385a 0,transparent 42%),radial-gradient(ellipse at 84% 82%,#102b49 0,transparent 46%),var(--bg);background-size:150% 150%;animation:kmAtmosphere 28s ease-in-out infinite alternate;color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
+@keyframes kmAtmosphere{from{background-position:0% 0%,100% 100%,0 0}to{background-position:35% 22%,65% 78%,0 0}}
+@media(prefers-reduced-motion:reduce){body{animation:none}}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
@@ -710,7 +566,7 @@ tr:last-child td{border-bottom:0}
     </div>
     <button class="btn" id="loginBtn">ENTER COMMAND CENTER</button>
     <div class="error" id="loginError"></div>
-    <div class="muted" style="text-align:center;font-size:10px;margin-top:18px">SECURE PRIVATE ACCESS · CRAFT FOR KINGS</div>
+    <div class="muted" style="text-align:center;font-size:10px;margin-top:18px">SECURE PRIVATE ACCESS \xB7 CRAFT FOR KINGS</div>
   </div>
 </div>
 
@@ -720,32 +576,34 @@ tr:last-child td{border-bottom:0}
     <div class="side-caption">PRIVATE COMMAND CENTER</div>
     <div class="nav-label">MANAGEMENT</div>
     <nav class="nav">
-      <button class="active" data-page="overview"><span class="ico">◈</span>Overview</button>
-      <button data-page="products"><span class="ico">◇</span>Products</button>
-      <button data-page="orders"><span class="ico">▤</span>Orders</button>
-      <button data-page="customers"><span class="ico">♙</span>Customers</button>
-      <button data-page="complaints"><span class="ico">✉</span>Complaints</button>
-      <button data-page="expenses"><span class="ico">↗</span>Expenses</button>
-      <button data-page="exchange"><span class="ico">⇄</span>Exchange rate</button>
+      <button class="active" data-page="overview"><span class="ico">\u25C8</span>Overview</button>
+      <button data-page="products"><span class="ico">\u25C7</span>Products</button>
+      <button data-page="inventory"><span class="ico">\u25A6</span>Inventory</button>
+      <button data-page="orders"><span class="ico">\u25A4</span>Orders</button>
+      <button data-page="customers"><span class="ico">\u2659</span>Customers</button>
+      <button data-page="complaints"><span class="ico">\u2709</span>Complaints</button>
+      <button data-page="expenses"><span class="ico">\u2197</span>Expenses</button>
+      <button data-page="exchange"><span class="ico">\u21C4</span>Exchange rate</button>
+      <button data-page="analytics"><span class="ico">\u25A7</span>Analytics</button>
     </nav>
     <div class="side-bottom">
       <div class="side-user">AUTHORIZED ADMINISTRATOR</div>
-      <button class="btn ghost" id="logoutBtn" style="width:100%">Sign out ↗</button>
+      <button class="btn ghost" id="logoutBtn" style="width:100%">Sign out \u2197</button>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <div style="display:flex;gap:12px;align-items:center">
-        <button class="btn ghost hamb" id="menuBtn">☰</button>
+        <button class="btn ghost hamb" id="menuBtn">\u2630</button>
         <div>
           <h1 class="page-title" id="pageTitle">Overview</h1>
-          <div class="page-sub">KINGSMADE · CRAFT FOR KINGS</div>
+          <div class="page-sub">KINGSMADE \xB7 CRAFT FOR KINGS</div>
         </div>
       </div>
       <div class="top-actions">
-        <div class="rate-pill" id="ratePill">USD/NGN · Loading…</div>
-        <button class="btn ghost" id="refreshBtn">↻ Refresh</button>
+        <div class="rate-pill" id="ratePill">USD/NGN \xB7 Loading\u2026</div>
+        <button class="btn ghost" id="refreshBtn">\u21BB Refresh</button>
       </div>
     </header>
 
@@ -753,13 +611,13 @@ tr:last-child td{border-bottom:0}
       <div class="grid" id="statsGrid"></div>
       <div class="two-col">
         <div class="panel">
-          <h3 class="panel-title">USD / NGN · Daily reference history</h3>
+          <h3 class="panel-title">USD / NGN \xB7 Daily reference history</h3>
           <div id="rateChart" class="chart-wrap"><div class="empty">Exchange-rate history will appear here.</div></div>
           <div class="chart-labels"><span>Daily mid-market reference rate</span><span id="chartRange">Last 90 days</span></div>
         </div>
         <div class="panel">
           <h3 class="panel-title">Financial position</h3>
-          <div id="financeSummary" class="muted">Loading financial summary…</div>
+          <div id="financeSummary" class="muted">Loading financial summary\u2026</div>
           <div class="notice">Profit is an estimate based on paid orders, recorded product costs and recorded expenses. It is not a substitute for reconciled accounts.</div>
         </div>
       </div>
@@ -770,9 +628,9 @@ tr:last-child td{border-bottom:0}
     </section>
 
     <section class="section" id="page-products">
-      <div class="section-head"><h2>Product collection</h2><button class="btn" id="addProductBtn">＋ Add product</button></div>
+      <div class="section-head"><h2>Product collection</h2><button class="btn" id="addProductBtn">\uFF0B Add product</button></div>
       <div class="toolbar">
-        <input id="productSearch" placeholder="Search products…">
+        <input id="productSearch" placeholder="Search products\u2026">
         <select id="productFilter">
           <option value="all">All products</option>
           <option value="active">Active</option>
@@ -782,10 +640,25 @@ tr:last-child td{border-bottom:0}
       <div id="productsTable"></div>
     </section>
 
+    <section class="section" id="page-inventory">
+      <div class="section-head"><h2>Inventory control</h2></div>
+      <div class="panel"><h3 class="panel-title">Record stock movement</h3>
+        <form id="inventoryForm" class="form-grid">
+          <div class="field"><label>Product</label><select id="inventoryProduct" required></select></div>
+          <div class="field"><label>Movement</label><select id="inventoryType"><option value="in">Stock in</option><option value="out">Stock out</option></select></div>
+          <div class="field"><label>Quantity</label><input id="inventoryQuantity" type="number" min="1" step="1" required></div>
+          <div class="field"><label>Reason / note</label><input id="inventoryNote" maxlength="500" placeholder="New delivery, damaged item, etc."></div>
+          <div class="span2 form-actions"><button class="btn" id="saveMovement" type="submit">Record movement</button><span id="inventoryMessage" class="muted"></span></div>
+        </form>
+      </div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Current stock</h3><div id="inventoryProducts"></div></div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Recent stock history</h3><div id="inventoryMovements"></div></div>
+      <div class="notice">Stock movements are recorded in the inventory ledger. Payment status is controlled by verified Paystack callbacks and cannot be manually marked paid here.</div>
+    </section>
     <section class="section" id="page-orders">
       <div class="section-head"><h2>Order management</h2></div>
       <div class="toolbar">
-        <input id="orderSearch" placeholder="Search order or customer…">
+        <input id="orderSearch" placeholder="Search order or customer\u2026">
         <select id="orderFilter">
           <option value="all">All payment states</option>
           <option value="paid">Paid</option>
@@ -799,26 +672,33 @@ tr:last-child td{border-bottom:0}
     <section class="section" id="page-customers">
       <div class="section-head"><h2>Customer directory</h2></div>
       <div id="customersTable"></div>
-      <div class="notice">The current orders table contains customer names only. Email and phone fields are not present, so this directory does not invent missing contact details.</div>
+      <div class="notice">Customer email and phone are shown only when those details were provided at checkout.</div>
     </section>
 
     <section class="section" id="page-complaints">
-      <div class="section-head"><h2>Customer complaints</h2><button class="btn" id="addComplaintBtn">＋ Record complaint</button></div>
+      <div class="section-head"><h2>Customer complaints</h2><button class="btn" id="addComplaintBtn">\uFF0B Record complaint</button></div>
       <div id="complaintsTable"></div>
     </section>
 
     <section class="section" id="page-expenses">
-      <div class="section-head"><h2>Business expenses</h2><button class="btn" id="addExpenseBtn">＋ Add expense</button></div>
+      <div class="section-head"><h2>Business expenses</h2><button class="btn" id="addExpenseBtn">\uFF0B Add expense</button></div>
       <div id="expensesTable"></div>
     </section>
 
+    <section class="section" id="page-analytics">
+      <div class="section-head"><h2>Business analytics</h2></div>
+      <div class="grid" id="analyticsStats"></div>
+      <div class="two-col"><div class="panel"><h3 class="panel-title">Daily paid sales</h3><div id="dailySalesTable"></div></div>
+      <div class="panel"><h3 class="panel-title">Best-selling products</h3><div id="topProductsTable"></div></div></div>
+      <div class="notice">Analytics use verified paid orders and order-item records only. Pending and failed payments are excluded.</div>
+    </section>
     <section class="section" id="page-exchange">
-      <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">↻ Update rate</button></div>
+      <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">\u21BB Update rate</button></div>
       <div class="grid" id="fxStats"></div>
       <div class="panel" style="margin-top:16px">
         <h3 class="panel-title">Daily USD/NGN history</h3>
         <div id="rateChartLarge" class="chart-wrap"></div>
-        <div class="chart-labels"><span>FXAPI mid-market reference data</span><span>Daily updates · Free plan</span></div>
+        <div class="chart-labels"><span>FXAPI mid-market reference data</span><span>Daily updates \xB7 Free plan</span></div>
       </div>
       <div class="panel" style="margin-top:16px">
         <h3 class="panel-title">Rate history</h3>
@@ -834,11 +714,11 @@ tr:last-child td{border-bottom:0}
 
 <script>
 const $=id=>document.getElementById(id);
-let state={products:[],orders:[],customers:[],complaints:[],expenses:[],dashboard:null,fx:null,page:'overview'};
+let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,page:'overview'};
 let seenOrderIds=new Set();
 let orderPollingReady=false;
 
-const money=n=>'₦'+Number(n||0).toLocaleString('en-NG',{maximumFractionDigits:0});
+const money=n=>'\u20A6'+Number(n||0).toLocaleString('en-NG',{maximumFractionDigits:0});
 const usd=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -922,7 +802,9 @@ function setPage(page){
     customers:'Customers',
     complaints:'Complaints',
     expenses:'Expenses',
-    exchange:'Exchange rate'
+    exchange:'Exchange rate',
+    inventory:'Inventory control',
+    analytics:'Business analytics'
   })[page]||'Overview';
 
   $('sidebar').classList.remove('open');
@@ -933,6 +815,8 @@ function setPage(page){
   if(page==='complaints')renderComplaints();
   if(page==='expenses')renderExpenses();
   if(page==='exchange')renderExchange();
+  if(page==='inventory')renderInventory();
+  if(page==='analytics')renderAnalytics();
 }
 
 function table(headers,rows){
@@ -953,14 +837,9 @@ function statusBadge(s){
 
 async function loadAll(){
   try{
-    const [d,p,o,c,x,co,fx]=await Promise.all([
-      api('/api/dashboard'),
-      api('/api/products'),
-      api('/api/orders'),
-      api('/api/customers'),
-      api('/api/expenses'),
-      api('/api/complaints'),
-      api('/api/fx')
+    const [d,p,o,c,x,co,fx,inv]=await Promise.all([
+      api('/api/dashboard'),api('/api/products'),api('/api/orders'),api('/api/customers'),
+      api('/api/expenses'),api('/api/complaints'),api('/api/fx'),api('/api/inventory')
     ]);
 
     state.dashboard=d;
@@ -972,9 +851,12 @@ async function loadAll(){
     state.expenses=x.expenses||[];
     state.complaints=co.complaints||[];
     state.fx=fx;
+    state.inventory=inv||{products:[],movements:[]};
 
     renderOverview();
     renderProducts();
+    renderInventory();
+    renderAnalytics();
   }catch(e){
     toast(e.message);
   }
@@ -1030,7 +912,7 @@ function renderOverview(){
 
   const cards=[
     ['PAID REVENUE',money(d.revenue_ngn),'Confirmed paid orders only'],
-    ['ESTIMATED PROFIT',money(d.estimated_profit_ngn),'After recorded costs and expenses'],
+    ['ESTIMATED PROFIT',d.profit_complete?money(d.estimated_profit_ngn):'Incomplete',d.profit_complete?'After recorded costs and expenses':(Number(d.missing_cost_lines||0)+' item lines missing cost')],
     ['PAID ORDERS',Number(d.paid_orders||0).toLocaleString(),'Of '+Number(d.total_orders||0)+' total orders'],
     ['RECORDED EXPENSES',money(d.expenses_ngn),'All expense entries'],
     ['INVENTORY COST VALUE',money(d.inventory_cost_ngn),'Active stock at unit cost'],
@@ -1053,8 +935,8 @@ function renderOverview(){
     '<div style="display:flex;justify-content:space-between;margin:12px 0"><span>Recorded expenses</span><b>'+
     money(d.expenses_ngn)+'</b></div>'+
     '<div style="border-top:1px solid #393932;padding-top:15px;display:flex;justify-content:space-between"><span>Estimated profit</span><b class="'+
-    (d.estimated_profit_ngn>=0?'profit-positive':'profit-negative')+'">'+
-    money(d.estimated_profit_ngn)+'</b></div>';
+    (d.profit_complete?(d.estimated_profit_ngn>=0?'profit-positive':'profit-negative'):'muted')+'">'+
+    (d.profit_complete?money(d.estimated_profit_ngn):'Incomplete — cost data missing')+'</b></div>';
 
   $('recentOrders').innerHTML=table(
     ['ORDER','CUSTOMER','PAYMENT','TOTAL','DATE'],
@@ -1069,8 +951,8 @@ function renderOverview(){
 
   const r=state.fx?.latest;
   $('ratePill').textContent=r
-    ?'USD/NGN · '+Number(r.rate).toLocaleString('en-US',{maximumFractionDigits:2})
-    :'USD/NGN · Not loaded';
+    ?'USD/NGN \xB7 '+Number(r.rate).toLocaleString('en-US',{maximumFractionDigits:2})
+    :'USD/NGN \xB7 Not loaded';
 }
 
 function renderChart(history,target='rateChart'){
@@ -1122,7 +1004,7 @@ function renderProducts(){
   const f=$('productFilter')?.value||'all';
 
   const list=state.products.filter(p=>
-    (p.name+' '+p.category).toLowerCase().includes(q)&&
+    (p.name+' '+p.category+' '+(p.description||'')).toLowerCase().includes(q)&&
     (f==='all'||(f==='active'?p.is_active:!p.is_active))
   );
 
@@ -1131,7 +1013,7 @@ function renderProducts(){
     list.map(p=>
       '<tr><td><b>'+esc(p.name)+'</b><div class="muted">#'+p.id+'</div></td>'+
       '<td>'+esc(p.category)+'</td>'+
-      '<td>'+(p.price_usd==null?'—':usd(p.price_usd))+'</td>'+
+      '<td>'+(p.price_usd==null?'\u2014':usd(p.price_usd))+'</td>'+
       '<td>'+money(p.price_ngn)+'</td>'+
       '<td>'+money(p.cost_price_ngn)+'</td>'+
       '<td>'+Number(p.stock_quantity)+'</td>'+
@@ -1150,7 +1032,7 @@ function modal(title,content){
   $('modalRoot').innerHTML=
     '<div class="modal-back" id="modalBack"><div class="modal">'+
     '<div class="modal-head"><h3>'+title+'</h3>'+
-    '<button class="btn ghost small" onclick="closeModal()">✕</button></div>'+
+    '<button class="btn ghost small" onclick="closeModal()">\u2715</button></div>'+
     content+'</div></div>';
 }
 
@@ -1172,14 +1054,14 @@ function productForm(p={}){
   modal(p.id?'Edit product':'Add product',
     '<form id="productForm"><div class="form-grid">'+
     '<div class="field span2"><label>Product name</label><input name="name" required maxlength="180" value="'+esc(p.name||'')+'"></div>'+
-    '<div class="field"><label>Category</label><input name="category" value="'+esc(p.category||'')+'" placeholder="Menswear, accessories…"></div>'+
+    '<div class="field"><label>Category</label><input name="category" value="'+esc(p.category||'')+'" placeholder="Menswear, accessories\u2026"></div>'+
     '<div class="field"><label>USD selling price</label><input name="price_usd" type="number" min="0" step="0.01" value="'+(p.price_usd??'')+'" placeholder="e.g. 45.00"></div>'+
     '<div class="field"><label>NGN selling price (converted)</label><input name="price_ngn" type="number" min="0" value="'+(p.price_ngn||0)+'" readonly></div>'+
     '<div class="field"><label>Unit cost (NGN)</label><input name="cost_price_ngn" type="number" min="0" value="'+(p.cost_price_ngn||0)+'"></div>'+
     '<div class="field"><label>Stock quantity</label><input name="stock_quantity" type="number" min="0" value="'+(p.stock_quantity||0)+'"></div>'+
     '<div class="field"><label>Sizes (comma separated)</label><input name="sizes" value="'+esc(sizes)+'" placeholder="S, M, L, XL"></div>'+
     '<div class="field"><label>Colours (comma separated)</label><input name="colors" value="'+esc(colors)+'" placeholder="Black, White"></div>'+
-    '<div class="field span2"><label>Image URL</label><input name="image_url" value="'+esc(p.image_url||'')+'" placeholder="https://…"></div>'+
+    '<div class="field span2"><label>Image URL</label><input name="image_url" value="'+esc(p.image_url||'')+'" placeholder="https://\u2026"></div>'+
     '<div class="field span2"><label>Description</label><textarea name="description" rows="3">'+esc(p.description||'')+'</textarea></div>'+
     '<div class="field"><label>Visibility</label><select name="is_active">'+
     '<option value="1" '+(p.is_active?'selected':'')+'>Active</option>'+
@@ -1258,12 +1140,12 @@ async function toggleProduct(id){
 }
 
 async function deleteProduct(id){
-  if(!confirm('Permanently delete this product? Products in order history cannot be deleted.'))return;
+  if(!confirm('Archive this product? It will be hidden while order and stock history are preserved.'))return;
 
   try{
     await api('/api/products/'+id,{method:'DELETE'});
     await loadAll();
-    toast('Product deleted.');
+    toast('Product archived and hidden from the store.');
   }catch(e){
     toast(e.message);
   }
@@ -1284,7 +1166,7 @@ function renderOrders(){
       '<tr><td><b>'+esc(o.order_number)+'</b></td>'+
       '<td>'+esc(o.customer_name)+'</td>'+
       '<td><select style="background:#10100f;color:#eee;border:1px solid #444;padding:6px;border-radius:6px" onchange="updateOrder('+o.id+',this.value)">'+
-      ['pending','processing','shipped','delivered','cancelled'].map(s=>
+      ['pending','confirmed','processing','shipped','delivered','cancelled'].map(s=>
         '<option '+(o.status===s?'selected':'')+'>'+s+'</option>'
       ).join('')+
       '</select></td><td>'+statusBadge(o.payment_status)+'</td>'+
@@ -1308,16 +1190,21 @@ async function updateOrder(id,status){
 }
 
 function renderCustomers(){
-  $('customersTable').innerHTML=table(
-    ['CUSTOMER','ORDERS','PAID ORDER VALUE','LAST ORDER'],
-    state.customers.map(c=>
-      '<tr><td>'+esc(c.customer_name||'Unnamed customer')+'</td>'+
-      '<td>'+c.order_count+'</td><td>'+money(c.paid_total_ngn)+'</td>'+
-      '<td>'+esc(c.last_order||'')+'</td></tr>'
-    )
-  );
+ $('customersTable').innerHTML=table(['CUSTOMER','EMAIL','PHONE','ORDERS','PAID ORDER VALUE','LAST ORDER'],state.customers.map(c=>'<tr><td>'+esc(c.customer_name||'Unnamed customer')+'</td><td>'+esc(c.customer_email||'—')+'</td><td>'+esc(c.customer_phone||'—')+'</td><td>'+Number(c.order_count||0)+'</td><td>'+money(c.paid_total_ngn)+'</td><td>'+esc(c.last_order||'')+'</td></tr>'));
 }
-
+function renderInventory(){
+ const products=state.inventory?.products||[],movements=state.inventory?.movements||[],select=$('inventoryProduct');
+ if(select){const selected=select.value;select.innerHTML=products.map(p=>'<option value='+Number(p.id)+'>'+esc(p.name)+' · '+Number(p.stock_quantity)+' in stock</option>').join('');if(products.some(p=>String(p.id)===selected))select.value=selected;}
+ $('inventoryProducts').innerHTML=table(['PRODUCT','CATEGORY','STOCK','UNIT COST','RETAIL VALUE','STATUS'],products.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.category||'—')+'</td><td>'+Number(p.stock_quantity||0)+'</td><td>'+money(p.cost_price_ngn)+'</td><td>'+money(Number(p.price_ngn||0)*Number(p.stock_quantity||0))+'</td><td>'+statusBadge(Number(p.is_active)===1?'active':'inactive')+'</td></tr>'));
+ $('inventoryMovements').innerHTML=table(['DATE','PRODUCT','MOVEMENT','QUANTITY','NOTE'],movements.map(m=>'<tr><td>'+esc(m.created_at||'')+'</td><td>'+esc(m.product_name||('Product #'+m.product_id))+'</td><td>'+statusBadge(m.movement_type)+'</td><td>'+Number(m.quantity||0)+'</td><td>'+esc(m.note||'—')+'</td></tr>'));
+}
+function renderAnalytics(){
+ const d=state.dashboard||{},daily=d.daily_sales||[],top=d.top_products||[];
+ const low=state.products.filter(p=>Number(p.is_active)===1&&Number(p.stock_quantity)<=5).length;
+ $('analyticsStats').innerHTML=[['PAID REVENUE',money(d.revenue_ngn),'Confirmed paid orders'],['ESTIMATED PROFIT',money(d.estimated_profit_ngn),'After recorded costs and expenses'],['LOW-STOCK PRODUCTS',String(low),'Five units or fewer'],['UNITS IN STOCK',Number(d.stock_units||0).toLocaleString(),'Active catalogue inventory']].map(c=>'<div class=stat><div class=stat-label>'+c[0]+'</div><div class=stat-value>'+c[1]+'</div><div class=stat-note>'+c[2]+'</div></div>').join('');
+ $('dailySalesTable').innerHTML=table(['DATE','PAID ORDERS','REVENUE'],daily.map(x=>'<tr><td>'+esc(x.sale_date||'')+'</td><td>'+Number(x.paid_orders||0)+'</td><td>'+money(x.revenue_ngn)+'</td></tr>'));
+ $('topProductsTable').innerHTML=table(['PRODUCT','UNITS SOLD','PAID REVENUE'],top.map(x=>'<tr><td>'+esc(x.product_name||'Product')+'</td><td>'+Number(x.units_sold||0)+'</td><td>'+money(x.revenue_ngn)+'</td></tr>'));
+}
 function renderExpenses(){
   $('expensesTable').innerHTML=table(
     ['DATE','DESCRIPTION','CATEGORY','AMOUNT','ACTION'],
@@ -1335,7 +1222,7 @@ function addExpense(){
     '<form id="expenseForm"><div class="form-grid">'+
     '<div class="field span2"><label>Description</label><input name="description" required></div>'+
     '<div class="field"><label>Amount (NGN)</label><input name="amount_ngn" type="number" min="0" required></div>'+
-    '<div class="field"><label>Category</label><input name="category" placeholder="Delivery, packaging, marketing…"></div>'+
+    '<div class="field"><label>Category</label><input name="category" placeholder="Delivery, packaging, marketing\u2026"></div>'+
     '<div class="field"><label>Date</label><input name="expense_date" type="date" value="'+new Date().toISOString().slice(0,10)+'"></div>'+
     '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save expense</button></div></form>'
   );
@@ -1432,9 +1319,9 @@ function renderExchange(){
 
   $('fxStats').innerHTML=[
     ['CURRENT SAVED RATE',r?Number(r.rate).toLocaleString('en-US',{maximumFractionDigits:4})+' NGN':'Not available','1 USD reference value'],
-    ['RATE DATE',r?.rate_date||'—','Provider date'],
+    ['RATE DATE',r?.rate_date||'\u2014','Provider date'],
     ['HISTORY POINTS',(fx.history||[]).length,'Saved daily observations'],
-    ['SOURCE',r?.source||'—','Mid-market reference']
+    ['SOURCE',r?.source||'\u2014','Mid-market reference']
   ].map(c=>
     '<div class="stat"><div class="stat-label">'+c[0]+'</div>'+
     '<div class="stat-value" style="font-size:23px">'+c[1]+'</div>'+
@@ -1490,6 +1377,13 @@ $('addExpenseBtn').addEventListener('click',addExpense);
 $('addComplaintBtn').addEventListener('click',addComplaint);
 $('fxRefreshBtn').addEventListener('click',refreshFx);
 $('refreshBtn').addEventListener('click',loadAll);
+$('inventoryForm').addEventListener('submit',async e=>{
+ e.preventDefault();const button=$('saveMovement'),product_id=Number($('inventoryProduct').value),quantity=Number($('inventoryQuantity').value),movement_type=$('inventoryType').value,note=$('inventoryNote').value.trim();
+ if(!Number.isSafeInteger(product_id)||product_id<1||!Number.isSafeInteger(quantity)||quantity<1){$('inventoryMessage').textContent='Select a product and enter a whole quantity greater than zero.';return;}
+ button.disabled=true;$('inventoryMessage').textContent='Recording movement…';
+ try{await api('/api/inventory',{method:'POST',body:JSON.stringify({product_id,movement_type,quantity,note})});$('inventoryQuantity').value='';$('inventoryNote').value='';await loadAll();$('inventoryMessage').textContent='Stock movement recorded.';}
+ catch(error){$('inventoryMessage').textContent=error.message;}finally{button.disabled=false;}
+});
 
 (async()=>{
   try{
@@ -1501,24 +1395,20 @@ $('refreshBtn').addEventListener('click',loadAll);
     showLogin();
   }
 })();
-</script>
+<\/script>
 </body>
-</html>`;
-
-export default {
+</html>`])));
+var worker_default = {
   async fetch(request, env) {
     const url = new URL(request.url);
-
     if (!env.DB) {
       return json({
-        error: "Missing D1 binding. Add DB → kingsmade-store to this Worker."
+        error: "Missing D1 binding. Add DB \u2192 kingsmade-store to this Worker."
       }, 503);
     }
-
     if (url.pathname === "/" || url.pathname === "/admin" || url.pathname === "/admin/") {
       return html(PAGE);
     }
-
     if (url.pathname.startsWith("/api/")) {
       try {
         return await api(request, env, url);
@@ -1528,12 +1418,23 @@ export default {
         }, 500);
       }
     }
-
     return new Response("Not found", { status: 404 });
   },
-
   async scheduled(event, env, ctx) {
-    if (!env.DB || !env.FXAPI_KEY) return;
-    await refreshRate(env);
+    if (!env.DB || !env.FXAPI_KEY) {
+      console.warn(JSON.stringify({event:"fx_refresh_skipped",reason:"missing_binding_or_key"}));
+      return;
+    }
+    try {
+      const latest = await refreshRate(env);
+      console.log(JSON.stringify({event:"fx_refresh_succeeded",rate_date:latest.rate_date,source:latest.source}));
+    } catch (error) {
+      console.error(JSON.stringify({event:"fx_refresh_failed",message:String(error?.message||"unknown error")}));
+      throw error;
+    }
   }
 };
+export {
+  worker_default as default
+};
+//# sourceMappingURL=worker.js.map
