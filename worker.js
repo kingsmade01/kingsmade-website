@@ -17,6 +17,13 @@ function ensureAuthTables(env) {
  ]).catch(e => { authTablesReady = null; throw e; });
  return authTablesReady;
 }
+async function ensureCmsTables(env) {
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS hero_slides (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', subtitle TEXT NOT NULL DEFAULT '', media_type TEXT NOT NULL DEFAULT 'image', media_url TEXT NOT NULL DEFAULT '', poster_url TEXT NOT NULL DEFAULT '', cta_label TEXT NOT NULL DEFAULT 'Shop now', cta_url TEXT NOT NULL DEFAULT '/shop', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+  ]);
+}
+__name(ensureCmsTables, "ensureCmsTables");
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -457,6 +464,49 @@ async function api(request, env, url) {
     ).bind(status, Number(complaintMatch[1])).run();
     return json({ ok: true });
   }
+  if (path === "/api/site-content" && method === "GET") {
+    await ensureCmsTables(env);
+    const [settings, slides] = await Promise.all([
+      env.DB.prepare("SELECT setting_key,setting_value FROM site_settings ORDER BY setting_key").all(),
+      env.DB.prepare("SELECT id,title,subtitle,media_type,media_url,poster_url,cta_label,cta_url,sort_order,is_active FROM hero_slides ORDER BY sort_order,id").all()
+    ]);
+    return json({settings:Object.fromEntries((settings.results||[]).map(x=>[x.setting_key,x.setting_value])),slides:slides.results||[]});
+  }
+  if (path === "/api/site-settings" && method === "PUT") {
+    await ensureCmsTables(env);
+    const body=await bodyJSON(request), values=body?.settings;
+    const allowed=["brand_name","hero_title","hero_subtitle","tagline","footer_text","contact_email","instagram_url","facebook_url","x_url","storefront_theme"];
+    if(!values||typeof values!=="object"||Array.isArray(values))return json({error:"Settings object is required."},400);
+    const statements=allowed.filter(k=>Object.prototype.hasOwnProperty.call(values,k)).map(k=>
+      env.DB.prepare("INSERT INTO site_settings(setting_key,setting_value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=CURRENT_TIMESTAMP").bind(k,cleanText(values[k],2000))
+    );
+    if(!statements.length)return json({error:"No supported settings were supplied."},400);
+    await env.DB.batch(statements);
+    return json({ok:true,saved:statements.length});
+  }
+  if (path === "/api/hero-slides" && method === "POST") {
+    await ensureCmsTables(env);
+    const b=await bodyJSON(request),title=cleanText(b.title,180),type=b.media_type==="video"?"video":"image",media=cleanText(b.media_url,2000);
+    if(!title||!media)return json({error:"A slide title and media URL are required."},400);
+    if(!/^https:\/\//i.test(media)&&!media.startsWith("/media/"))return json({error:"Use a secure HTTPS media URL or a KINGSMADE media path."},400);
+    const result=await env.DB.prepare("INSERT INTO hero_slides(title,subtitle,media_type,media_url,poster_url,cta_label,cta_url,sort_order,is_active) VALUES(?,?,?,?,?,?,?,?,?)").bind(title,cleanText(b.subtitle,500),type,media,cleanText(b.poster_url,2000),cleanText(b.cta_label,80)||"Shop now",cleanText(b.cta_url,500)||"/shop",Math.max(0,Math.min(1000,Math.round(num(b.sort_order)))),b.is_active===false?0:1).run();
+    return json({ok:true,id:result.meta?.last_row_id});
+  }
+  const slideMatch=path.match(/^\/api\/hero-slides\/(\d+)$/);
+  if(slideMatch&&method==="PUT"){
+    await ensureCmsTables(env);
+    const b=await bodyJSON(request),id=Number(slideMatch[1]),title=cleanText(b.title,180),type=b.media_type==="video"?"video":"image",media=cleanText(b.media_url,2000);
+    if(!title||!media)return json({error:"A slide title and media URL are required."},400);
+    if(!/^https:\/\//i.test(media)&&!media.startsWith("/media/"))return json({error:"Use a secure HTTPS media URL or a KINGSMADE media path."},400);
+    const result=await env.DB.prepare("UPDATE hero_slides SET title=?,subtitle=?,media_type=?,media_url=?,poster_url=?,cta_label=?,cta_url=?,sort_order=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(title,cleanText(b.subtitle,500),type,media,cleanText(b.poster_url,2000),cleanText(b.cta_label,80)||"Shop now",cleanText(b.cta_url,500)||"/shop",Math.max(0,Math.min(1000,Math.round(num(b.sort_order)))),b.is_active===false?0:1,id).run();
+    if(!result.meta?.changes)return json({error:"Hero slide not found."},404);
+    return json({ok:true});
+  }
+  if(slideMatch&&method==="DELETE"){
+    await ensureCmsTables(env);
+    await env.DB.prepare("UPDATE hero_slides SET is_active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(Number(slideMatch[1])).run();
+    return json({ok:true,deactivated:true});
+  }
   return json({ error: "API route not found." }, 404);
 }
 __name(api, "api");
@@ -586,6 +636,7 @@ tr:last-child td{border-bottom:0}
       <button data-page="expenses"><span class="ico">\u2197</span>Expenses</button>
       <button data-page="exchange"><span class="ico">\u21C4</span>Exchange rate</button>
       <button data-page="analytics"><span class="ico">\u25A7</span>Analytics</button>
+      <button data-page="cms"><span class="ico">\u25A3</span>Storefront manager</button>
     </nav>
     <div class="side-bottom">
       <div class="side-user">AUTHORIZED ADMINISTRATOR</div>
@@ -693,6 +744,41 @@ tr:last-child td{border-bottom:0}
       <div class="panel"><h3 class="panel-title">Best-selling products</h3><div id="topProductsTable"></div></div></div>
       <div class="notice">Analytics use verified paid orders and order-item records only. Pending and failed payments are excluded.</div>
     </section>
+    <section class="section" id="page-cms">
+      <div class="section-head"><h2>Storefront content</h2><button class="btn ghost" id="cmsReloadBtn" type="button">Refresh content</button></div>
+      <div class="notice">Changes saved here are stored separately from the live storefront until its CMS connection is implemented and tested. Media upload is the next storage step; these fields currently accept secure media URLs.</div>
+      <div class="panel">
+        <h3 class="panel-title">Brand and storefront text</h3>
+        <form id="siteSettingsForm" class="form-grid">
+          <div class="field"><label>Brand name</label><input name="brand_name" maxlength="120"></div>
+          <div class="field"><label>Hero title</label><input name="hero_title" maxlength="180"></div>
+          <div class="field"><label>Hero subtitle</label><input name="hero_subtitle" maxlength="300"></div>
+          <div class="field"><label>Tagline</label><input name="tagline" maxlength="300"></div>
+          <div class="field span2"><label>Footer text</label><input name="footer_text" maxlength="500"></div>
+          <div class="field"><label>Contact email</label><input name="contact_email" type="email" maxlength="180"></div>
+          <div class="field"><label>Storefront theme</label><input name="storefront_theme" placeholder="Ivory, midnight navy, champagne gold"></div>
+          <div class="field"><label>Instagram URL</label><input name="instagram_url" type="url"></div>
+          <div class="field"><label>Facebook URL</label><input name="facebook_url" type="url"></div>
+          <div class="field"><label>X URL</label><input name="x_url" type="url"></div>
+          <div class="span2 form-actions"><button class="btn" type="submit">Save storefront text</button><span id="cmsSettingsMessage" class="muted"></span></div>
+        </form>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <h3 class="panel-title">Hero slide manager</h3>
+        <form id="heroSlideForm" class="form-grid">
+          <div class="field"><label>Slide title</label><input name="title" maxlength="180" required></div>
+          <div class="field"><label>Subtitle</label><input name="subtitle" maxlength="500"></div>
+          <div class="field"><label>Media type</label><select name="media_type"><option value="image">Image</option><option value="video">Video</option></select></div>
+          <div class="field"><label>Media URL (temporary)</label><input name="media_url" type="url" placeholder="https://…" required></div>
+          <div class="field"><label>Video poster URL</label><input name="poster_url" type="url"></div>
+          <div class="field"><label>Button label</label><input name="cta_label" value="Shop now"></div>
+          <div class="field"><label>Button destination</label><input name="cta_url" value="/shop"></div>
+          <div class="field"><label>Display order</label><input name="sort_order" type="number" min="0" step="1" value="0"></div>
+          <div class="span2 form-actions"><button class="btn" type="submit">Add hero slide</button><span id="heroSlideMessage" class="muted"></span></div>
+        </form>
+        <div id="heroSlidesTable" style="margin-top:18px"></div>
+      </div>
+    </section>
     <section class="section" id="page-exchange">
       <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">\u21BB Update rate</button></div>
       <div class="grid" id="fxStats"></div>
@@ -715,7 +801,7 @@ tr:last-child td{border-bottom:0}
 
 <script>
 const $=id=>document.getElementById(id);
-let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,page:'overview'};
+let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,siteContent:{settings:{},slides:[]},page:'overview'};
 let seenOrderIds=new Set();
 let orderPollingReady=false;
 
@@ -805,7 +891,7 @@ function setPage(page){
     expenses:'Expenses',
     exchange:'Exchange rate',
     inventory:'Inventory control',
-    analytics:'Business analytics'
+    analytics:'Business analytics',\n    cms:'Storefront manager'
   })[page]||'Overview';
 
   $('sidebar').classList.remove('open');
@@ -817,7 +903,7 @@ function setPage(page){
   if(page==='expenses')renderExpenses();
   if(page==='exchange')renderExchange();
   if(page==='inventory')renderInventory();
-  if(page==='analytics')renderAnalytics();
+  if(page==='analytics')renderAnalytics();\n  if(page==='cms')loadSiteContent();
 }
 
 function table(headers,rows){
@@ -838,9 +924,9 @@ function statusBadge(s){
 
 async function loadAll(){
   try{
-    const [d,p,o,c,x,co,fx,inv]=await Promise.all([
+    const [d,p,o,c,x,co,fx,inv,site]=await Promise.all([
       api('/api/dashboard'),api('/api/products'),api('/api/orders'),api('/api/customers'),
-      api('/api/expenses'),api('/api/complaints'),api('/api/fx'),api('/api/inventory')
+      api('/api/expenses'),api('/api/complaints'),api('/api/fx'),api('/api/inventory'),api('/api/site-content')
     ]);
 
     state.dashboard=d;
@@ -852,7 +938,7 @@ async function loadAll(){
     state.expenses=x.expenses||[];
     state.complaints=co.complaints||[];
     state.fx=fx;
-    state.inventory=inv||{products:[],movements:[]};
+    state.inventory=inv||{products:[],movements:[]};\n    state.siteContent=site||{settings:{},slides:[]};
 
     renderOverview();
     renderProducts();
@@ -863,7 +949,26 @@ async function loadAll(){
   }
 }
 
-function notifyNewOrder(){
+async function loadSiteContent(){
+  try{
+    const data=await api('/api/site-content');
+    state.siteContent=data;
+    const form=$('siteSettingsForm');
+    if(form)for(const [key,value] of Object.entries(data.settings||{})){if(form.elements[key])form.elements[key].value=value;}
+    renderHeroSlides();
+  }catch(e){toast(e.message);}
+}
+function renderHeroSlides(){
+  const slides=state.siteContent?.slides||[];
+  $('heroSlidesTable').innerHTML=table(['ORDER','TITLE','TYPE','MEDIA','STATUS','ACTION'],slides.map(s=>
+    '<tr><td>'+Number(s.sort_order)+'</td><td>'+esc(s.title)+'</td><td>'+esc(s.media_type)+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.media_url)+'</td><td>'+statusBadge(Number(s.is_active)===1?'active':'inactive')+'</td><td><button class="btn danger small" onclick="archiveHeroSlide('+Number(s.id)+')">Hide</button></td></tr>'
+  ));
+}
+async function archiveHeroSlide(id){
+  if(!confirm('Hide this hero slide?'))return;
+  try{await api('/api/hero-slides/'+id,{method:'DELETE'});await loadSiteContent();toast('Hero slide hidden.');}catch(e){toast(e.message);}
+}
+\nfunction notifyNewOrder(){
   try{
     const C=window.AudioContext||window.webkitAudioContext;
     if(!C)return;
@@ -1376,7 +1481,18 @@ $('orderSearch').addEventListener('input',renderOrders);
 $('orderFilter').addEventListener('change',renderOrders);
 $('addExpenseBtn').addEventListener('click',addExpense);
 $('addComplaintBtn').addEventListener('click',addComplaint);
-$('fxRefreshBtn').addEventListener('click',refreshFx);
+$('fxRefreshBtn').addEventListener('click',refreshFx);\n$('cmsReloadBtn').addEventListener('click',loadSiteContent);
+$('siteSettingsForm').addEventListener('submit',async e=>{
+  e.preventDefault();const values=Object.fromEntries(new FormData(e.target));
+  try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify({settings:values})});$('cmsSettingsMessage').textContent='Saved securely.';await loadSiteContent();toast('Storefront text saved.');}
+  catch(err){$('cmsSettingsMessage').textContent=err.message;}
+});
+$('heroSlideForm').addEventListener('submit',async e=>{
+  e.preventDefault();const values=Object.fromEntries(new FormData(e.target));
+  try{await api('/api/hero-slides',{method:'POST',body:JSON.stringify(values)});e.target.reset();e.target.elements.cta_label.value='Shop now';e.target.elements.cta_url.value='/shop';e.target.elements.sort_order.value='0';await loadSiteContent();toast('Hero slide added.');}
+  catch(err){$('heroSlideMessage').textContent=err.message;}
+});
+
 $('refreshBtn').addEventListener('click',loadAll);
 $('inventoryForm').addEventListener('submit',async e=>{
  e.preventDefault();const button=$('saveMovement'),product_id=Number($('inventoryProduct').value),quantity=Number($('inventoryQuantity').value),movement_type=$('inventoryType').value,note=$('inventoryNote').value.trim();
