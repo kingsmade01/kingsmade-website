@@ -20,7 +20,8 @@ function ensureAuthTables(env) {
 async function ensureCmsTables(env) {
   await env.DB.batch([
     env.DB.prepare("CREATE TABLE IF NOT EXISTS site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS hero_slides (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', subtitle TEXT NOT NULL DEFAULT '', media_type TEXT NOT NULL DEFAULT 'image', media_url TEXT NOT NULL DEFAULT '', poster_url TEXT NOT NULL DEFAULT '', cta_label TEXT NOT NULL DEFAULT 'Shop now', cta_url TEXT NOT NULL DEFAULT '/shop', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS hero_slides (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', subtitle TEXT NOT NULL DEFAULT '', media_type TEXT NOT NULL DEFAULT 'image', media_url TEXT NOT NULL DEFAULT '', poster_url TEXT NOT NULL DEFAULT '', cta_label TEXT NOT NULL DEFAULT 'Shop now', cta_url TEXT NOT NULL DEFAULT '/shop', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS store_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, description TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
   ]);
 }
 __name(ensureCmsTables, "ensureCmsTables");
@@ -463,6 +464,40 @@ async function api(request, env, url) {
       "UPDATE complaints SET status=? WHERE id=?"
     ).bind(status, Number(complaintMatch[1])).run();
     return json({ ok: true });
+  }
+  if (path === "/api/store-categories" && method === "GET") {
+    await ensureCmsTables(env);
+    const rows=await env.DB.prepare("SELECT id,name,slug,description,image_url,sort_order,is_active FROM store_categories ORDER BY sort_order,id").all();
+    return json({categories:rows.results||[]});
+  }
+  if (path === "/api/store-categories" && method === "POST") {
+    await ensureCmsTables(env);
+    const b=await bodyJSON(request),name=cleanText(b.name,100);
+    const slug=cleanText(b.slug,120).toLowerCase()||name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    if(!name||!slug)return json({error:"Category name is required."},400);
+    if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return json({error:"Use a simple lowercase URL slug."},400);
+    try{
+      const result=await env.DB.prepare("INSERT INTO store_categories(name,slug,description,image_url,sort_order,is_active) VALUES(?,?,?,?,?,?)").bind(name,slug,cleanText(b.description,500),cleanText(b.image_url,2000),Math.max(0,Math.min(1000,Math.round(num(b.sort_order)))),b.is_active===false?0:1).run();
+      return json({ok:true,id:result.meta?.last_row_id});
+    }catch(e){return json({error:"That category slug already exists."},409);}
+  }
+  const categoryMatch=path.match(/^\/api\/store-categories\/(\d+)$/);
+  if(categoryMatch&&method==="PUT"){
+    await ensureCmsTables(env);
+    const b=await bodyJSON(request),id=Number(categoryMatch[1]),name=cleanText(b.name,100);
+    const slug=cleanText(b.slug,120).toLowerCase();
+    if(!name||!slug||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return json({error:"A category name and valid lowercase slug are required."},400);
+    try{
+      const result=await env.DB.prepare("UPDATE store_categories SET name=?,slug=?,description=?,image_url=?,sort_order=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(name,slug,cleanText(b.description,500),cleanText(b.image_url,2000),Math.max(0,Math.min(1000,Math.round(num(b.sort_order)))),b.is_active===false?0:1,id).run();
+      if(!result.meta?.changes)return json({error:"Category not found."},404);
+      return json({ok:true});
+    }catch(e){return json({error:"That category slug already exists."},409);}
+  }
+  if(categoryMatch&&method==="DELETE"){
+    await ensureCmsTables(env);
+    const result=await env.DB.prepare("UPDATE store_categories SET is_active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(Number(categoryMatch[1])).run();
+    if(!result.meta?.changes)return json({error:"Category not found."},404);
+    return json({ok:true,deactivated:true});
   }
   if (path === "/api/site-content" && method === "GET") {
     await ensureCmsTables(env);
@@ -958,7 +993,7 @@ async function loadSiteContent(){
     state.siteContent=data;
     const form=$('siteSettingsForm');
     if(form)for(const [key,value] of Object.entries(data.settings||{})){if(form.elements[key])form.elements[key].value=value;}
-    renderHeroSlides();
+    renderHeroSlides();\n    await loadStoreCategories();
   }catch(e){toast(e.message);}
 }
 function renderHeroSlides(){
@@ -966,6 +1001,29 @@ function renderHeroSlides(){
   $('heroSlidesTable').innerHTML=table(['ORDER','TITLE','TYPE','MEDIA','STATUS','ACTION'],slides.map(s=>
     '<tr><td>'+Number(s.sort_order)+'</td><td>'+esc(s.title)+'</td><td>'+esc(s.media_type)+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.media_url)+'</td><td>'+statusBadge(Number(s.is_active)===1?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editHeroSlide('+Number(s.id)+')">Edit</button><button class="btn danger small" onclick="archiveHeroSlide('+Number(s.id)+')">Hide</button></div></td></tr>'
   ));
+}
+async function loadStoreCategories(){
+  try{
+    const data=await api('/api/store-categories');
+    state.siteContent.categories=data.categories||[];
+    $('storeCategoriesTable').innerHTML=table(['ORDER','CATEGORY','SLUG','IMAGE','STATUS','ACTION'],state.siteContent.categories.map(s=>
+      '<tr><td>'+Number(s.sort_order)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.slug)+'</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">'+esc(s.image_url||'—')+'</td><td>'+statusBadge(Number(s.is_active)===1?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editStoreCategory('+Number(s.id)+')">Edit</button><button class="btn danger small" onclick="archiveStoreCategory('+Number(s.id)+')">Hide</button></div></td></tr>'
+    ));
+  }catch(e){$('storeCategoriesTable').textContent=e.message;}
+}
+async function editStoreCategory(id){
+  const s=(state.siteContent?.categories||[]).find(x=>Number(x.id)===Number(id));if(!s)return;
+  const name=prompt('Category name',s.name);if(name===null)return;
+  const slug=prompt('URL slug',s.slug);if(slug===null)return;
+  const description=prompt('Description',s.description||'');if(description===null)return;
+  const image_url=prompt('Image URL',s.image_url||'');if(image_url===null)return;
+  const sort_order=prompt('Display order',String(s.sort_order??0));if(sort_order===null)return;
+  try{await api('/api/store-categories/'+id,{method:'PUT',body:JSON.stringify({...s,name,slug,description,image_url,sort_order:Number(sort_order)})});await loadStoreCategories();toast('Category updated.');}
+  catch(e){toast(e.message);}
+}
+async function archiveStoreCategory(id){
+  if(!confirm('Hide this category?'))return;
+  try{await api('/api/store-categories/'+id,{method:'DELETE'});await loadStoreCategories();toast('Category hidden.');}catch(e){toast(e.message);}
 }
 async function editHeroSlide(id){
   const s=(state.siteContent?.slides||[]).find(x=>Number(x.id)===Number(id));
@@ -1502,6 +1560,11 @@ $('orderFilter').addEventListener('change',renderOrders);
 $('addExpenseBtn').addEventListener('click',addExpense);
 $('addComplaintBtn').addEventListener('click',addComplaint);
 $('fxRefreshBtn').addEventListener('click',refreshFx);
+$('storeCategoryForm').addEventListener('submit',async e=>{
+  e.preventDefault();const values=Object.fromEntries(new FormData(e.target));
+  try{await api('/api/store-categories',{method:'POST',body:JSON.stringify(values)});e.target.reset();e.target.elements.sort_order.value='0';$('categoryMessage').textContent='Category saved.';await loadStoreCategories();toast('Category added.');}
+  catch(err){$('categoryMessage').textContent=err.message;}
+});
 $('cmsReloadBtn').addEventListener('click',loadSiteContent);
 $('siteSettingsForm').addEventListener('submit',async e=>{
   e.preventDefault();const values=Object.fromEntries(new FormData(e.target));
