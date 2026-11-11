@@ -399,6 +399,95 @@ function setCategory(category) {
   renderProducts();
 }
 
+
+async function loadSiteContent() {
+  try {
+    const [contentResponse, categoryResponse] = await Promise.all([
+      fetch("/api/site-content", { headers: { "Accept": "application/json" } }),
+      fetch("/api/store-categories", { headers: { "Accept": "application/json" } })
+    ]);
+    if (contentResponse.ok) {
+      const data = await contentResponse.json();
+      const settings = data.settings || {};
+      const setText = (selector, value) => {
+        const node = document.querySelector(selector);
+        if (node && typeof value === "string" && value.trim()) node.textContent = value;
+      };
+      setText(".wordmark", settings.brand_name);
+      setText(".hero-content h1", settings.hero_title || settings.brand_name);
+      setText(".hero-slogan", settings.hero_subtitle || settings.tagline);
+      setText(".hero-description", settings.tagline && settings.hero_subtitle ? settings.tagline : "");
+      setText(".footer-logo", settings.brand_name);
+      setText(".footer-main > div:first-child > p:nth-of-type(1)", settings.footer_text || settings.hero_subtitle);
+      const social = {
+        instagram: settings.instagram_url,
+        facebook: settings.facebook_url,
+        x: settings.x_url
+      };
+      Object.entries(social).forEach(([key, url]) => {
+        if (typeof url === "string" && /^https:\/\//i.test(url)) CONFIG[key] = url;
+      });
+      initializeSocialLinks();
+
+      const activeSlide = (Array.isArray(data.slides) ? data.slides : [])
+        .filter(slide => Number(slide.is_active) === 1 && /^https:\/\//i.test(slide.media_url || ""))
+        .sort((a, b) => Number(a.sort_order) - Number(b.sort_order) || Number(a.id) - Number(b.id))[0];
+      const hero = document.querySelector(".hero");
+      const heroImage = document.querySelector(".hero-image");
+      if (activeSlide && hero && heroImage) {
+        if (activeSlide.media_type === "video") {
+          const video = document.createElement("video");
+          video.className = "hero-media-video";
+          video.src = activeSlide.media_url;
+          video.autoplay = true;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          if (/^https:\/\//i.test(activeSlide.poster_url || "")) video.poster = activeSlide.poster_url;
+          video.setAttribute("aria-hidden", "true");
+          heroImage.replaceChildren(video);
+        } else {
+          heroImage.style.backgroundImage = 'url("' + activeSlide.media_url.replace(/["\\\\]/g, "") + '")';
+        }
+        const title = document.querySelector(".hero-content h1");
+        const subtitle = document.querySelector(".hero-slogan");
+        const description = document.querySelector(".hero-description");
+        const cta = document.querySelector(".hero-button");
+        if (title && activeSlide.title) title.textContent = activeSlide.title;
+        if (subtitle) subtitle.textContent = activeSlide.subtitle || "";
+        if (description) description.textContent = "";
+        if (cta) {
+          cta.textContent = activeSlide.cta_label || "DISCOVER THE COLLECTION";
+          cta.href = activeSlide.cta_url && /^(\/|https:\/\/)/i.test(activeSlide.cta_url) ? activeSlide.cta_url : "#collection";
+        }
+      }
+    }
+    if (categoryResponse.ok) {
+      const data = await categoryResponse.json();
+      const categories = (Array.isArray(data.categories) ? data.categories : [])
+        .filter(item => Number(item.is_active) === 1);
+      if (categories.length) {
+        const panel = $("filterPanel");
+        if (panel) {
+          panel.replaceChildren();
+          const addFilter = (label, value) => {
+            const button = document.createElement("button");
+            button.className = "filter" + (value === "All" ? " active" : "");
+            button.dataset.filter = value;
+            button.textContent = label;
+            button.addEventListener("click", () => setCategory(value));
+            panel.appendChild(button);
+          };
+          addFilter("ALL", "All");
+          categories.forEach(item => addFilter(item.name.toUpperCase(), item.name));
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("KINGSMADE site content could not be loaded:", error);
+  }
+}
+
 function initializeSocialLinks() {
   const links = [
     ["instagramLink", CONFIG.instagram],
@@ -492,4 +581,5 @@ $("checkoutButton").addEventListener("click", () => {
 
 initializeSocialLinks();
 renderCart();
+loadSiteContent();
 loadProducts();
