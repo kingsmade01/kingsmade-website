@@ -801,8 +801,9 @@ tr:last-child td{border-bottom:0}
       <div class="notice">Analytics use verified paid orders and order-item records only. Pending and failed payments are excluded.</div>
     </section>
     <section class="section" id="page-cms">
-      <div class="section-head"><h2>Storefront content</h2><button class="btn ghost" id="cmsReloadBtn" type="button">Refresh content</button></div>
-      <div class="notice">Changes saved here are stored separately from the live storefront until its CMS connection is implemented and tested. Media upload is the next storage step; these fields currently accept secure media URLs.</div>
+      <div class="section-head"><h2>Storefront content</h2><div class="form-actions"><button class="btn ghost" id="cmsReloadBtn" type="button">Refresh content</button><button class="btn" id="publishSiteBtn" type="button">Publish storefront</button></div></div>
+      <div class="notice">Edits are drafts until you publish. Publishing sends the saved text, active hero slides and active categories to the storefront. Media upload is still pending R2 setup; these fields currently accept secure media URLs.</div>
+      <p id="publishStatus" class="muted" aria-live="polite"></p>
       <div class="panel">
         <h3 class="panel-title">Brand and storefront text</h3>
         <form id="siteSettingsForm" class="form-grid">
@@ -1600,6 +1601,17 @@ $('storeCategoryForm').addEventListener('submit',async e=>{
   catch(err){$('categoryMessage').textContent=err.message;}
 });
 $('cmsReloadBtn').addEventListener('click',loadSiteContent);
+$('publishSiteBtn').addEventListener('click',async()=>{
+  const button=$('publishSiteBtn');
+  if(!confirm('Publish the current saved storefront content now?'))return;
+  button.disabled=true;$('publishStatus').textContent='Publishing…';
+  try{
+    const result=await api('/api/site-content/publish',{method:'POST',body:'{}'});
+    $('publishStatus').textContent='Published successfully. Publication #'+result.publication_id;
+    toast('Storefront content published.');
+  }catch(error){$('publishStatus').textContent='Publish failed: '+error.message;}
+  finally{button.disabled=false;}
+});
 $('siteSettingsForm').addEventListener('submit',async e=>{
   e.preventDefault();const values=Object.fromEntries(new FormData(e.target));
   try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify({settings:values})});$('cmsSettingsMessage').textContent='Saved securely.';await loadSiteContent();toast('Storefront text saved.');}
