@@ -402,10 +402,7 @@ function setCategory(category) {
 
 async function loadSiteContent() {
   try {
-    const [contentResponse, categoryResponse] = await Promise.all([
-      fetch("/api/site-content", { headers: { "Accept": "application/json" } }),
-      fetch("/api/store-categories", { headers: { "Accept": "application/json" } })
-    ]);
+    const contentResponse = await fetch("/api/storefront-content", { headers: { "Accept": "application/json" } });
     if (contentResponse.ok) {
       const data = await contentResponse.json();
       const settings = data.settings || {};
@@ -438,6 +435,7 @@ async function loadSiteContent() {
         if (activeSlide.media_type === "video") {
           const video = document.createElement("video");
           video.className = "hero-media-video";
+          video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center";
           video.src = activeSlide.media_url;
           video.autoplay = true;
           video.muted = true;
@@ -462,25 +460,22 @@ async function loadSiteContent() {
         }
       }
     }
-    if (categoryResponse.ok) {
-      const data = await categoryResponse.json();
-      const categories = (Array.isArray(data.categories) ? data.categories : [])
-        .filter(item => Number(item.is_active) === 1);
-      if (categories.length) {
-        const panel = $("filterPanel");
-        if (panel) {
-          panel.replaceChildren();
-          const addFilter = (label, value) => {
-            const button = document.createElement("button");
-            button.className = "filter" + (value === "All" ? " active" : "");
-            button.dataset.filter = value;
-            button.textContent = label;
-            button.addEventListener("click", () => setCategory(value));
-            panel.appendChild(button);
-          };
-          addFilter("ALL", "All");
-          categories.forEach(item => addFilter(item.name.toUpperCase(), item.name));
-        }
+    const categories = (Array.isArray(data.categories) ? data.categories : [])
+      .filter(item => Number(item.is_active) === 1);
+    if (categories.length) {
+      const panel = $("filterPanel");
+      if (panel) {
+        panel.replaceChildren();
+        const addFilter = (label, value) => {
+          const button = document.createElement("button");
+          button.className = "filter" + (value === "All" ? " active" : "");
+          button.dataset.filter = value;
+          button.textContent = label;
+          button.addEventListener("click", () => setCategory(value));
+          panel.appendChild(button);
+        };
+        addFilter("ALL", "All");
+        categories.forEach(item => addFilter(item.name.toUpperCase(), item.name));
       }
     }
   } catch (error) {
