@@ -21,7 +21,8 @@ async function ensureCmsTables(env) {
   await env.DB.batch([
     env.DB.prepare("CREATE TABLE IF NOT EXISTS site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS hero_slides (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', subtitle TEXT NOT NULL DEFAULT '', media_type TEXT NOT NULL DEFAULT 'image', media_url TEXT NOT NULL DEFAULT '', poster_url TEXT NOT NULL DEFAULT '', cta_label TEXT NOT NULL DEFAULT 'Shop now', cta_url TEXT NOT NULL DEFAULT '/shop', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS store_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, description TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS store_categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, description TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS site_publications (id INTEGER PRIMARY KEY AUTOINCREMENT, content_json TEXT NOT NULL, published_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
   ]);
 }
 __name(ensureCmsTables, "ensureCmsTables");
@@ -228,6 +229,14 @@ async function api(request, env, url) {
     const session=await readSession(request,env);
     if(session){try{await ensureAuthTables(env);await env.DB.batch([env.DB.prepare("DELETE FROM revoked_sessions WHERE expires_at<?").bind(Date.now()),env.DB.prepare("INSERT OR IGNORE INTO revoked_sessions (nonce,expires_at) VALUES (?,?)").bind(session.nonce,session.expiry)]);}catch{return json({error:"Could not safely revoke the session. Retry sign out."},503);}}
     return json({ok:true},200,{"Set-Cookie":cookieHeader("",0)});
+  }
+
+  if (path === "/api/storefront-content" && method === "GET") {
+    await ensureCmsTables(env);
+    const publication = await env.DB.prepare("SELECT content_json,published_at FROM site_publications ORDER BY id DESC LIMIT 1").first();
+    if (!publication) return json({settings:{},slides:[],categories:[],published_at:null});
+    try { return json({...JSON.parse(publication.content_json),published_at:publication.published_at}); }
+    catch { return json({error:"Published storefront content is unavailable."},503); }
   }
   const authError = await requireAuth(request, env);
   if (authError) return authError;
@@ -498,6 +507,18 @@ async function api(request, env, url) {
     const result=await env.DB.prepare("UPDATE store_categories SET is_active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(Number(categoryMatch[1])).run();
     if(!result.meta?.changes)return json({error:"Category not found."},404);
     return json({ok:true,deactivated:true});
+  }
+
+  if (path === "/api/site-content/publish" && method === "POST") {
+    await ensureCmsTables(env);
+    const [settings, slides, categories] = await Promise.all([
+      env.DB.prepare("SELECT setting_key,setting_value FROM site_settings ORDER BY setting_key").all(),
+      env.DB.prepare("SELECT id,title,subtitle,media_type,media_url,poster_url,cta_label,cta_url,sort_order,is_active FROM hero_slides WHERE is_active=1 ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT id,name,slug,description,image_url,sort_order,is_active FROM store_categories WHERE is_active=1 ORDER BY sort_order,id").all()
+    ]);
+    const snapshot = {settings:Object.fromEntries((settings.results||[]).map(x=>[x.setting_key,x.setting_value])),slides:slides.results||[],categories:categories.results||[]};
+    const result = await env.DB.prepare("INSERT INTO site_publications(content_json) VALUES(?)").bind(JSON.stringify(snapshot)).run();
+    return json({ok:true,publication_id:result.meta?.last_row_id});
   }
   if (path === "/api/site-content" && method === "GET") {
     await ensureCmsTables(env);
