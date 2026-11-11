@@ -509,6 +509,39 @@ async function api(request, env, url) {
     return json({ok:true,deactivated:true});
   }
 
+  if (path === "/api/site-content/history" && method === "GET") {
+    await ensureCmsTables(env);
+    const rows = await env.DB.prepare("SELECT id,published_at,length(content_json) AS size_bytes FROM site_publications ORDER BY id DESC LIMIT 50").all();
+    return json({publications:rows.results||[]});
+  }
+  if (path === "/api/site-content/restore" && method === "POST") {
+    await ensureCmsTables(env);
+    const body = await bodyJSON(request), id = Number(body?.publication_id);
+    if (!Number.isSafeInteger(id) || id < 1) return json({error:"A valid publication ID is required."},400);
+    const selected = await env.DB.prepare("SELECT content_json FROM site_publications WHERE id=?").bind(id).first();
+    if (!selected) return json({error:"Publication not found."},404);
+    let snapshot;
+    try { snapshot = JSON.parse(selected.content_json); } catch { return json({error:"That publication is damaged and cannot be restored."},422); }
+    if (!snapshot || typeof snapshot !== "object" || !snapshot.settings || !Array.isArray(snapshot.slides) || !Array.isArray(snapshot.categories)) return json({error:"That publication has an unsupported format."},422);
+    const statements = [
+      env.DB.prepare("DELETE FROM site_settings"),
+      env.DB.prepare("DELETE FROM hero_slides"),
+      env.DB.prepare("DELETE FROM store_categories")
+    ];
+    for (const [key,value] of Object.entries(snapshot.settings)) {
+      if (["brand_name","hero_title","hero_subtitle","tagline","footer_text","contact_email","instagram_url","facebook_url","x_url","storefront_theme"].includes(key))
+        statements.push(env.DB.prepare("INSERT INTO site_settings(setting_key,setting_value) VALUES(?,?)").bind(key,cleanText(value,2000)));
+    }
+    for (const slide of snapshot.slides) {
+      statements.push(env.DB.prepare("INSERT INTO hero_slides(id,title,subtitle,media_type,media_url,poster_url,cta_label,cta_url,sort_order,is_active) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(Number(slide.id)||null,cleanText(slide.title,180),cleanText(slide.subtitle,500),slide.media_type==="video"?"video":"image",cleanText(slide.media_url,2000),cleanText(slide.poster_url,2000),cleanText(slide.cta_label,80)||"Shop now",cleanText(slide.cta_url,500)||"/shop",Math.max(0,Math.min(1000,Math.round(num(slide.sort_order)))),1));
+    }
+    for (const category of snapshot.categories) {
+      statements.push(env.DB.prepare("INSERT INTO store_categories(id,name,slug,description,image_url,sort_order,is_active) VALUES(?,?,?,?,?,?,1)").bind(Number(category.id)||null,cleanText(category.name,100),cleanText(category.slug,120),cleanText(category.description,500),cleanText(category.image_url,2000),Math.max(0,Math.min(1000,Math.round(num(category.sort_order)))));
+    }
+    statements.push(env.DB.prepare("INSERT INTO site_publications(content_json) VALUES(?)").bind(JSON.stringify(snapshot)));
+    await env.DB.batch(statements);
+    return json({ok:true,restored_from:id});
+  }
   if (path === "/api/site-content/publish" && method === "POST") {
     await ensureCmsTables(env);
     const [settings, slides, categories] = await Promise.all([
@@ -804,6 +837,7 @@ tr:last-child td{border-bottom:0}
       <div class="section-head"><h2>Storefront content</h2><div class="form-actions"><button class="btn ghost" id="cmsReloadBtn" type="button">Refresh content</button><button class="btn" id="publishSiteBtn" type="button">Publish storefront</button></div></div>
       <div class="notice">Edits are drafts until you publish. Publishing sends the saved text, active hero slides and active categories to the storefront. Media upload is still pending R2 setup; these fields currently accept secure media URLs.</div>
       <p id="publishStatus" class="muted" aria-live="polite"></p>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Publication history</h3><p class="muted">Restore a previous published version. Restoring creates a new publication and replaces the current editable CMS content.</p><div id="publicationHistory"></div></div>
       <div class="panel">
         <h3 class="panel-title">Brand and storefront text</h3>
         <form id="siteSettingsForm" class="form-grid">
@@ -1022,13 +1056,31 @@ async function loadAll(){
   }
 }
 
+
+async function loadPublicationHistory(){
+  try{
+    const data=await api('/api/site-content/history');
+    const rows=data.publications||[];
+    $('publicationHistory').innerHTML=rows.length?table(['VERSION','PUBLISHED','SIZE','ACTION'],rows.map(item=>
+      '<tr><td>#'+Number(item.id)+'</td><td>'+esc(item.published_at)+'</td><td>'+Math.max(1,Math.round(Number(item.size_bytes||0)/1024))+' KB</td><td><button class="btn ghost small" onclick="restorePublication('+Number(item.id)+')">Restore</button></td></tr>'
+    )):'<p class="muted">No published versions yet.</p>';
+  }catch(e){$('publicationHistory').textContent=e.message;}
+}
+async function restorePublication(id){
+  if(!confirm('Restore publication #'+id+'? This replaces current CMS edits and publishes that version again.'))return;
+  try{
+    await api('/api/site-content/restore',{method:'POST',body:JSON.stringify({publication_id:id})});
+    await loadSiteContent();
+    toast('Previous version restored and published.');
+  }catch(e){toast(e.message);}
+}
 async function loadSiteContent(){
   try{
     const data=await api('/api/site-content');
     state.siteContent=data;
     const form=$('siteSettingsForm');
     if(form)for(const [key,value] of Object.entries(data.settings||{})){if(form.elements[key])form.elements[key].value=value;}
-    renderHeroSlides();\n    await loadStoreCategories();
+    renderHeroSlides();\n    await loadStoreCategories();\n    await loadPublicationHistory();
   }catch(e){toast(e.message);}
 }
 function renderHeroSlides(){
@@ -1600,7 +1652,7 @@ $('storeCategoryForm').addEventListener('submit',async e=>{
   try{await api('/api/store-categories',{method:'POST',body:JSON.stringify(values)});e.target.reset();e.target.elements.sort_order.value='0';$('categoryMessage').textContent='Category saved.';await loadStoreCategories();toast('Category added.');}
   catch(err){$('categoryMessage').textContent=err.message;}
 });
-$('cmsReloadBtn').addEventListener('click',loadSiteContent);
+$('cmsReloadBtn').addEventListener('click',loadSiteContent);\n$('publishSiteBtn').addEventListener('click',async()=>{
 $('publishSiteBtn').addEventListener('click',async()=>{
   const button=$('publishSiteBtn');
   if(!confirm('Publish the current saved storefront content now?'))return;
