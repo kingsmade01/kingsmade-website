@@ -813,6 +813,19 @@ tr:last-child td{border-bottom:0}
         </form>
         <div id="heroSlidesTable" style="margin-top:18px"></div>
       </div>
+      <div class="panel" style="margin-top:16px">
+        <h3 class="panel-title">Store categories</h3>
+        <p class="muted">Manage category names, descriptions, images and order. Storefront display and product assignment still need the integration pass.</p>
+        <form id="storeCategoryForm" class="form-grid">
+          <div class="field"><label>Category name</label><input name="name" maxlength="100" required placeholder="Traditional wear"></div>
+          <div class="field"><label>URL slug</label><input name="slug" maxlength="120" placeholder="traditional-wear"></div>
+          <div class="field"><label>Description</label><input name="description" maxlength="500"></div>
+          <div class="field"><label>Category image URL (temporary)</label><input name="image_url" type="url"></div>
+          <div class="field"><label>Display order</label><input name="sort_order" type="number" min="0" value="0"></div>
+          <div class="span2 form-actions"><button class="btn" type="submit">Add category</button><span id="categoryMessage" class="muted"></span></div>
+        </form>
+        <div id="storeCategoriesTable" style="margin-top:18px"></div>
+      </div>
     </section>
     <section class="section" id="page-exchange">
       <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">\u21BB Update rate</button></div>
