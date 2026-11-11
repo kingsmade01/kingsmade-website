@@ -536,7 +536,7 @@ async function api(request, env, url) {
       statements.push(env.DB.prepare("INSERT INTO hero_slides(id,title,subtitle,media_type,media_url,poster_url,cta_label,cta_url,sort_order,is_active) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(Number(slide.id)||null,cleanText(slide.title,180),cleanText(slide.subtitle,500),slide.media_type==="video"?"video":"image",cleanText(slide.media_url,2000),cleanText(slide.poster_url,2000),cleanText(slide.cta_label,80)||"Shop now",cleanText(slide.cta_url,500)||"/shop",Math.max(0,Math.min(1000,Math.round(num(slide.sort_order)))),1));
     }
     for (const category of snapshot.categories) {
-      statements.push(env.DB.prepare("INSERT INTO store_categories(id,name,slug,description,image_url,sort_order,is_active) VALUES(?,?,?,?,?,?,1)").bind(Number(category.id)||null,cleanText(category.name,100),cleanText(category.slug,120),cleanText(category.description,500),cleanText(category.image_url,2000),Math.max(0,Math.min(1000,Math.round(num(category.sort_order)))));
+      statements.push(env.DB.prepare("INSERT INTO store_categories(id,name,slug,description,image_url,sort_order,is_active) VALUES(?,?,?,?,?,?,1)").bind(Number(category.id)||null,cleanText(category.name,100),cleanText(category.slug,120),cleanText(category.description,500),cleanText(category.image_url,2000),Math.max(0,Math.min(1000,Math.round(num(category.sort_order))))));
     }
     statements.push(env.DB.prepare("INSERT INTO site_publications(content_json) VALUES(?)").bind(JSON.stringify(snapshot)));
     await env.DB.batch(statements);
