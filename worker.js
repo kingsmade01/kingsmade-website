@@ -243,6 +243,28 @@ async function api(request, env, url) {
   if (method !== "GET" && !checkOrigin(request)) {
     return json({ error: "Request origin rejected." }, 403);
   }
+
+  if (path === "/api/media" && method === "POST") {
+    if (!env.MEDIA) return json({error:"Media storage is not enabled yet. Enable R2 and add the MEDIA binding."},503);
+    if (!(request.headers.get("Content-Type")||"").toLowerCase().startsWith("multipart/form-data;")) return json({error:"Upload must use multipart form data."},415);
+    const form = await request.formData(), file = form.get("file"), folder = cleanText(form.get("folder"),30).toLowerCase();
+    if (!["products","hero","categories","site"].includes(folder)) return json({error:"Invalid media folder."},400);
+    if (!(file instanceof File) || !file.size) return json({error:"Choose a file to upload."},400);
+    const mime=(file.type||"").toLowerCase(), images=["image/jpeg","image/png","image/webp","image/gif"], videos=["video/mp4","video/webm"];
+    const isImage=images.includes(mime),isVideo=videos.includes(mime);
+    if(!isImage&&!isVideo)return json({error:"Use JPG, PNG, WebP, GIF, MP4 or WebM."},415);
+    if(file.size>(isVideo?50:10)*1024*1024)return json({error:isVideo?"Videos must be 50 MB or smaller.":"Images must be 10 MB or smaller."},413);
+    const ext=({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif","video/mp4":"mp4","video/webm":"webm"})[mime];
+    const key=folder+"/"+crypto.randomUUID()+"."+ext;
+    await env.MEDIA.put(key,file.stream(),{httpMetadata:{contentType:mime,cacheControl:"public, max-age=31536000, immutable"}});
+    return json({ok:true,key,url:"/media/"+key,content_type:mime,size:file.size});
+  }
+  const mediaDeleteMatch=path.match(/^\/api\/media\/([a-z0-9-]+)\/([a-f0-9-]+)\.(jpg|png|webp|gif|mp4|webm)$/i);
+  if(mediaDeleteMatch&&method==="DELETE"){
+    if(!env.MEDIA)return json({error:"Media storage is not enabled."},503);
+    await env.MEDIA.delete(mediaDeleteMatch[1]+"/"+mediaDeleteMatch[2]+"."+mediaDeleteMatch[3]);
+    return json({ok:true});
+  }
   if (path === "/api/me" && method === "GET") {
     return json({ authenticated: true });
   }
@@ -1707,6 +1729,16 @@ var worker_default = {
     }
     if (url.pathname === "/" || url.pathname === "/admin" || url.pathname === "/admin/") {
       return html(PAGE);
+    }
+
+    if (url.pathname.startsWith("/media/")) {
+      if (!env.MEDIA) return new Response("Media storage is not enabled.",{status:503});
+      const key=url.pathname.slice(7);
+      if(!/^(products|hero|categories|site)\/[a-f0-9-]+\.(jpg|png|webp|gif|mp4|webm)$/i.test(key))return new Response("Not found",{status:404});
+      const object=await env.MEDIA.get(key);
+      if(!object)return new Response("Not found",{status:404});
+      const headers=new Headers();object.writeHttpMetadata(headers);headers.set("ETag",object.httpEtag);headers.set("X-Content-Type-Options","nosniff");headers.set("Cache-Control","public, max-age=31536000, immutable");
+      return new Response(object.body,{headers});
     }
     if (url.pathname.startsWith("/api/")) {
       try {
