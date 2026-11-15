@@ -8,6 +8,7 @@ var SESSION_COOKIE = "km_admin_session";
 var SESSION_HOURS = 8;
 var MAX_FAILED_LOGINS = 5;
 var LOGIN_WINDOW_MS = 15 * 60 * 1000;
+var DEFAULT_CATEGORIES = [{"id":"mens-clothing","name":"Men's Clothing","slug":"mens-clothing","image_url":"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":0},{"id":"shirts","name":"Shirts","slug":"shirts","image_url":"https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":1},{"id":"trousers","name":"Trousers","slug":"trousers","image_url":"https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":2},{"id":"traditional-wear","name":"Traditional Wear","slug":"traditional-wear","image_url":"https://images.unsplash.com/photo-1592878904946-b3cd8ae243d0?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":3},{"id":"fabrics","name":"Fabrics","slug":"fabrics","image_url":"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":4},{"id":"shoes","name":"Shoes","slug":"shoes","image_url":"https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":5},{"id":"watches","name":"Watches","slug":"watches","image_url":"https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":6},{"id":"bracelets","name":"Bracelets","slug":"bracelets","image_url":"https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":7},{"id":"caps","name":"Caps","slug":"caps","image_url":"https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":8},{"id":"bags-and-accessories","name":"Bags & Accessories","slug":"bags-and-accessories","image_url":"https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=700&q=85","is_active":true,"sort_order":9}];
 var authTablesReady = null;
 function ensureAuthTables(env) {
  if (!authTablesReady) authTablesReady = env.DB.batch([
@@ -264,6 +265,33 @@ async function api(request, env, url) {
     if (!slides.some(slide => slide.is_active)) return json({ error: "At least one hero slide must remain active." }, 400);
     await env.DB.prepare("INSERT INTO km_site_settings (setting_key,setting_value) VALUES ('hero_slides',?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value").bind(JSON.stringify(slides)).run();
     return json({ ok: true, slides });
+  }
+  if (path === "/api/categories" && method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS km_site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL)").run();
+    const row = await env.DB.prepare("SELECT setting_value FROM km_site_settings WHERE setting_key='categories' LIMIT 1").first();
+    let categories = [];
+    try { categories = row?.setting_value ? JSON.parse(row.setting_value) : []; } catch {}
+    if (!Array.isArray(categories) || !categories.length) categories = DEFAULT_CATEGORIES;
+    return json({ categories });
+  }
+  if (path === "/api/categories" && method === "PUT") {
+    const body = await bodyJSON(request);
+    if (!Array.isArray(body?.categories) || body.categories.length < 1 || body.categories.length > 20) return json({ error: "Add between 1 and 20 categories." }, 400);
+    const categories = [], seenSlugs = new Set();
+    for (const [index, item] of body.categories.entries()) {
+      const name = cleanText(item?.name, 80), image_url = cleanText(item?.image_url, 2000);
+      const slug = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      if (name.length < 2 || !slug) return json({ error: "Category " + (index + 1) + " needs a valid name." }, 400);
+      if (seenSlugs.has(slug)) return json({ error: "Category names must be unique." }, 400);
+      seenSlugs.add(slug);
+      if (image_url) { try { if (new URL(image_url).protocol !== "https:") throw new Error(); } catch { return json({ error: "Category photo URLs must use HTTPS." }, 400); } }
+      const id = /^[A-Za-z0-9_-]{1,80}$/.test(String(item?.id || "")) ? String(item.id) : crypto.randomUUID();
+      categories.push({ id, name, slug, image_url, is_active: item?.is_active !== false, sort_order: index });
+    }
+    if (!categories.some(category => category.is_active)) return json({ error: "Keep at least one category active." }, 400);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS km_site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL)").run();
+    await env.DB.prepare("INSERT INTO km_site_settings (setting_key,setting_value) VALUES ('categories',?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value").bind(JSON.stringify(categories)).run();
+    return json({ ok: true, categories });
   }
   if (path === "/api/dashboard" && method === "GET") {
     const [sales, expense, stock, orders, recent, dailySales, topProducts] = await Promise.all([
@@ -586,6 +614,12 @@ tr:last-child td{border-bottom:0}
 .hamb{display:none}
 .profit-positive{color:var(--green)}
 .profit-negative{color:var(--red)}
+.category-editor-card{display:grid;grid-template-columns:190px minmax(0,1fr);gap:18px;margin:14px 0;padding:16px}
+.category-photo-preview{width:100%;height:150px;border:1px solid var(--line);border-radius:10px;background:#07182d;display:grid;place-items:center;overflow:hidden;color:var(--muted);font-size:11px}
+.category-photo-preview img{width:100%;height:100%;object-fit:cover}
+.category-editor-card .form-grid{align-content:start}
+@media(max-width:720px){.category-editor-card{grid-template-columns:1fr}.category-photo-preview{height:190px}}
+
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two-col{grid-template-columns:1fr}.main{padding:22px 20px 50px}}
 @media(max-width:720px){.sidebar{transform:translateX(-100%);transition:transform .2s;width:260px;box-shadow:15px 0 35px #0008}.sidebar.open{transform:translateX(0)}.main{margin-left:0;padding:18px 14px 40px}.hamb{display:inline-flex}.topbar{align-items:flex-start}.page-title{font-size:24px}.rate-pill{display:none}.grid{gap:9px}.stat{padding:13px;min-height:102px}.stat-value{font-size:21px}.stat-label{font-size:9px}.form-grid{grid-template-columns:1fr}.span2{grid-column:auto}.login-card{padding:27px 22px}.top-actions .btn{padding:8px 10px;font-size:11px}}
 </style>
@@ -616,6 +650,7 @@ tr:last-child td{border-bottom:0}
       <button class="active" data-page="overview"><span class="ico">\u25C8</span>Overview</button>
       <button data-page="products"><span class="ico">\u25C7</span>Products</button>
       <button data-page="hero-slides"><span class="ico">\u25A3</span>Hero slides</button>
+      <button data-page="categories"><span class="ico">\u25A6</span>Categories</button>
       <button data-page="inventory"><span class="ico">\u25A6</span>Inventory</button>
       <button data-page="orders"><span class="ico">\u25A4</span>Orders</button>
       <button data-page="customers"><span class="ico">\u2659</span>Customers</button>
@@ -739,6 +774,15 @@ tr:last-child td{border-bottom:0}
       <div id="heroSlidesEditor"></div>
       <div id="heroSlidesMessage" class="notice" aria-live="polite"></div>
     </section>
+    <section class="section" id="page-categories">
+      <div class="section-head">
+        <div><h2>Store categories</h2><p class="muted">Edit category names and storefront preview photos. Changes publish to the connected storefront when saved.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="addCategoryBtn" type="button">+ Add category</button><button class="btn" id="saveCategoriesBtn" type="button">Save categories</button></div>
+      </div>
+      <div class="notice">Use a public HTTPS image URL. Direct photo uploads need a dedicated image-storage connection; no insecure upload endpoint has been added.</div>
+      <div id="categoriesEditor"></div>
+      <div id="categoriesMessage" class="notice" aria-live="polite"></div>
+    </section>
     <section class="section" id="page-exchange">
       <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">\u21BB Update rate</button></div>
       <div class="grid" id="fxStats"></div>
@@ -763,6 +807,7 @@ tr:last-child td{border-bottom:0}
 const $=id=>document.getElementById(id);
 let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,page:'overview'};
 let heroSlides=[];
+let categories=[];
 let seenOrderIds=new Set();
 let orderPollingReady=false;
 
@@ -847,6 +892,7 @@ function setPage(page){
     overview:'Overview',
     products:'Products',
     'hero-slides':'Homepage hero slides',
+    categories:'Store categories',
     orders:'Orders',
     customers:'Customers',
     complaints:'Complaints',
@@ -859,6 +905,7 @@ function setPage(page){
   $('sidebar').classList.remove('open');
 
   if(page==='hero-slides')loadHeroSlides();
+  if(page==='categories')loadCategories();
   if(page==='products')renderProducts();
   if(page==='orders')renderOrders();
   if(page==='customers')renderCustomers();
@@ -933,6 +980,56 @@ $('addHeroSlideBtn').addEventListener('click',()=>{
   renderHeroSlides();
 });
 $('saveHeroSlidesBtn').addEventListener('click',saveHeroSlides);
+
+
+async function loadCategories(){
+  const editor=$('categoriesEditor');
+  editor.innerHTML='<div class="empty">Loading categories…</div>';
+  try{const data=await api('/api/categories');categories=Array.isArray(data.categories)?data.categories:[];renderCategories();}
+  catch(error){editor.innerHTML='<div class="notice">'+esc(error.message)+'</div>';}
+}
+function renderCategories(){
+  const editor=$('categoriesEditor');
+  editor.innerHTML=categories.map((category,index)=>'<article class="panel category-editor-card" data-category-index="'+index+'">'+
+    '<div class="category-photo-preview"><img data-category-preview alt="'+esc(category.name||'Category photo')+'" src="'+esc(category.image_url||'')+'" '+(category.image_url?'':'hidden')+'><span data-preview-empty '+(category.image_url?'hidden':'')+'>Photo preview</span></div>'+
+    '<div><div class="form-grid">'+
+    '<div class="field"><label>Category name</label><input data-field="name" maxlength="80" value="'+esc(category.name||'')+'" placeholder="e.g. Watches"></div>'+
+    '<div class="field"><label>Photo HTTPS URL</label><input data-field="image_url" maxlength="2000" value="'+esc(category.image_url||'')+'" placeholder="https://…"></div>'+
+    '<div class="field"><label>Visibility</label><select data-field="is_active"><option value="true" '+(category.is_active!==false?'selected':'')+'>Active</option><option value="false" '+(category.is_active===false?'selected':'')+'>Hidden</option></select></div>'+
+    '<div class="field"><label>Position</label><div class="muted" style="padding:11px 0">Position '+(index+1)+'</div></div>'+
+    '</div><div class="form-actions"><button class="btn danger small" type="button" data-remove-category="'+index+'">Remove category</button></div></div></article>'
+  ).join('');
+  editor.querySelectorAll('[data-field="image_url"]').forEach(input=>input.addEventListener('input',()=>{
+    const card=input.closest('[data-category-index]'),image=card.querySelector('[data-category-preview]'),empty=card.querySelector('[data-preview-empty]');
+    let valid=false;try{valid=new URL(input.value).protocol==='https:';}catch{}
+    if(valid){image.src=input.value;image.hidden=false;empty.hidden=true;}
+    else{image.removeAttribute('src');image.hidden=true;empty.hidden=false;}
+  }));
+  editor.querySelectorAll('[data-category-preview]').forEach(image=>image.addEventListener('error',()=>{
+    image.hidden=true;const empty=image.parentElement.querySelector('[data-preview-empty]');if(empty)empty.hidden=false;
+  }));
+  editor.querySelectorAll('[data-remove-category]').forEach(button=>button.addEventListener('click',()=>{
+    categories.splice(Number(button.dataset.removeCategory),1);renderCategories();
+  }));
+}
+function collectCategories(){
+  return Array.from($('categoriesEditor').querySelectorAll('[data-category-index]')).map(card=>{
+    const original=categories[Number(card.dataset.categoryIndex)]||{};
+    const get=name=>card.querySelector('[data-field="'+name+'"]')?.value||'';
+    return {id:original.id,name:get('name').trim(),image_url:get('image_url').trim(),is_active:get('is_active')==='true'};
+  });
+}
+async function saveCategories(){
+  const button=$('saveCategoriesBtn');button.disabled=true;$('categoriesMessage').textContent='Saving categories…';
+  try{const data=await api('/api/categories',{method:'PUT',body:JSON.stringify({categories:collectCategories()})});categories=data.categories||[];renderCategories();$('categoriesMessage').textContent='Categories saved. Refresh the storefront preview to see the changes.';toast('Categories saved.');}
+  catch(error){$('categoriesMessage').textContent=error.message;}
+  finally{button.disabled=false;}
+}
+$('addCategoryBtn').addEventListener('click',()=>{
+  if(categories.length>=20){toast('You can add up to 20 categories.');return;}
+  categories.push({id:'category-'+crypto.randomUUID(),name:'New category',image_url:'',is_active:true});renderCategories();
+});
+$('saveCategoriesBtn').addEventListener('click',saveCategories);
 
 function table(headers,rows){
   if(!rows.length)return '<div class="empty">No records to display yet.</div>';
