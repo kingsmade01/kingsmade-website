@@ -991,7 +991,7 @@ async function loadCategories(){
 function renderCategories(){
   const editor=$('categoriesEditor');
   editor.innerHTML=categories.map((category,index)=>'<article class="panel category-editor-card" data-category-index="'+index+'">'+
-    '<div class="category-photo-preview"><img data-category-preview alt="'+esc(category.name||'Category photo')+'" src="'+esc(category.image_url||'')+'" '+(category.image_url?'':'hidden')+'><span data-preview-empty '+(category.image_url?'hidden':'')+'>Photo preview</span></div>'+
+    '<div class="category-photo-preview"><img data-category-preview alt="'+esc(category.name||'Category photo')+'" '+(category.image_url?'src="'+esc(category.image_url)+'"':'')+' '+(category.image_url?'':'hidden')+'><span data-preview-empty '+(category.image_url?'hidden':'')+'>Photo preview</span></div>'+
     '<div><div class="form-grid">'+
     '<div class="field"><label>Category name</label><input data-field="name" maxlength="80" value="'+esc(category.name||'')+'" placeholder="e.g. Watches"></div>'+
     '<div class="field"><label>Photo HTTPS URL</label><input data-field="image_url" maxlength="2000" value="'+esc(category.image_url||'')+'" placeholder="https://…"></div>'+
