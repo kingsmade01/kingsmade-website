@@ -177,3 +177,9 @@ footer{padding:24px 3.5% 14px;background:#061a33;color:#e9bd77}
 .reference-hero .hero-signature { color: #e7bb75; }
 .reference-hero .hero-wave { border-top-color: #d6ad68; }
 img { max-width: 100%; }
+
+/* Refined social brand marks */
+.footer-social a{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;color:#e9bd77;transition:color .2s ease,transform .2s ease}
+.footer-social a svg{display:block;width:27px;height:27px;fill:currentColor}
+.footer-social a:hover{color:#fff;transform:translateY(-2px)}
+@media(max-width:600px){.footer-social a{width:30px;height:30px}.footer-social a svg{width:24px;height:24px}}
