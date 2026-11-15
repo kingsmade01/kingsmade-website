@@ -461,7 +461,92 @@ function checkout() {
   );
 }
 
+/* ---------------- HERO SETTINGS ---------------- */
+
+function safeNavigationURL(value) {
+  try {
+    const target = new URL(
+      typeof value === "string" ? value : "/#shop",
+      location.origin
+    );
+
+    if (target.origin === location.origin && target.protocol === "https:") {
+      return target.pathname + target.search + target.hash;
+    }
+  } catch {}
+
+  return "/#shop";
+}
+
+async function loadKingsmadeHero() {
+  const hero = $("homepageHero");
+  if (!hero) return;
+
+  try {
+    const response = await fetch("/api/hero", {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const settings = data.hero;
+
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+      return;
+    }
+
+    hero.classList.toggle(
+      "is-hidden",
+      settings.is_visible !== undefined &&
+      Number(settings.is_visible) !== 1
+    );
+
+    if (typeof settings.heading === "string" && settings.heading) {
+      $("heroHeading").textContent = settings.heading;
+    }
+
+    if (typeof settings.subtitle === "string" && settings.subtitle) {
+      $("heroSubtitle").textContent = settings.subtitle;
+    }
+
+    const button = $("heroButton");
+    button.textContent =
+      (typeof settings.button_text === "string" && settings.button_text
+        ? settings.button_text
+        : "DISCOVER THE COLLECTION") + " ↗";
+    button.href = safeNavigationURL(settings.button_url);
+
+    const image = $("heroBackground");
+    const imageURL = safeImageURL(settings.image_url);
+
+    if (imageURL) {
+      image.src = imageURL;
+      image.hidden = false;
+    } else {
+      image.removeAttribute("src");
+      image.hidden = true;
+    }
+  } catch (error) {
+    console.error("KINGSMADE hero settings:", error);
+  }
+}
+
 /* ---------------- INITIALISE STORE ---------------- */
+
+$("menuButton")?.addEventListener("click", () => {
+  document.body.classList.toggle("menu-open");
+});
+
+$("bagButton")?.addEventListener("click", () => toggleCart());
+
+$("closeCartButton")?.addEventListener("click", () => toggleCart(false));
+
+$("checkoutButton")?.addEventListener("click", checkout);
+
+$("overlay")?.addEventListener("click", () => toggleCart(false));
 
 renderCart();
 loadProducts();
+loadKingsmadeHero();
