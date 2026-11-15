@@ -622,10 +622,45 @@ function initCategoryRouting() {
   }
 }
 
+
+async function loadStoreCategories() {
+  try {
+    const response = await fetch("/api/categories", { cache: "no-store" });
+    if (!response.ok) throw new Error("Category settings unavailable");
+    const data = await response.json();
+    if (!Array.isArray(data.categories)) throw new Error("Invalid category settings");
+    const grid = document.querySelector(".category-grid");
+    if (grid) {
+      grid.replaceChildren();
+      data.categories.filter(category => category && category.is_active !== false).forEach(category => {
+        const name = String(category.name || "").trim();
+        const slug = String(category.slug || slugifyCategory(name));
+        if (!name || !slug) return;
+        const tile = document.createElement("a");
+        tile.className = "category-tile";
+        tile.href = "/category/" + slug;
+        tile.dataset.category = name;
+        const image = document.createElement("img");
+        image.src = safeImageURL(category.image_url || "") || "";
+        image.alt = name;
+        image.loading = "lazy";
+        const label = document.createElement("span");
+        label.textContent = name.toUpperCase();
+        tile.append(image, label);
+        grid.appendChild(tile);
+      });
+    }
+  } catch (error) {
+    console.warn("KINGSMADE categories:", error);
+  } finally {
+    initCategoryRouting();
+  }
+}
+
 /* ---------------- INITIALISE STORE ---------------- */
 initStorefrontControls();
 $("storeSearch")?.addEventListener("input",renderProducts);
-initCategoryRouting();
+loadStoreCategories();
 renderCart();
 loadProducts();
 loadKingsmadeHero();
