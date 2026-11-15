@@ -8,6 +8,8 @@
 
 let products = [];
 let cart = [];
+let selectedCategory = "";
+let currentCategoryName = "";
 
 const CART_STORAGE_KEY = "kingsmade_cart_v1";
 
@@ -189,7 +191,14 @@ function renderProducts() {
     return;
   }
 
-  products.forEach(product => {
+  const query=($("storeSearch")?.value||"").trim().toLowerCase();
+  const visibleProducts=products.filter(product=>{
+    const matchesText=!query||(product.name+" "+(product.category||"")+" "+(product.description||"")).toLowerCase().includes(query);
+    const matchesCategory=!selectedCategory||slugifyCategory(product.category)===selectedCategory;
+    return matchesText&&matchesCategory;
+  });
+  if(!visibleProducts.length){const empty=document.createElement("p");empty.textContent="No products match this selection yet.";container.appendChild(empty);return;}
+  visibleProducts.forEach(product => {
     const card = document.createElement("article");
     card.className = "card";
 
@@ -461,92 +470,162 @@ function checkout() {
   );
 }
 
-/* ---------------- HERO SETTINGS ---------------- */
+/* ---------------- EDITABLE HERO SLIDER ---------------- */
+let heroSlides = [];
+let activeHeroSlide = 0;
+let heroRotation = null;
 
-function safeNavigationURL(value) {
-  try {
-    const target = new URL(
-      typeof value === "string" ? value : "/#shop",
-      location.origin
-    );
-
-    if (target.origin === location.origin && target.protocol === "https:") {
-      return target.pathname + target.search + target.hash;
+function renderHeroDots(){
+  const dots=$("heroDots");
+  if(!dots)return;
+  dots.replaceChildren();
+  heroSlides.forEach((slide,index)=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className=index===activeHeroSlide?"active":"";
+    button.setAttribute("aria-label","Show hero slide "+(index+1));
+    button.setAttribute("aria-current",index===activeHeroSlide?"true":"false");
+    button.addEventListener("click",()=>showHeroSlide(index,true));
+    dots.appendChild(button);
+  });
+}
+function showHeroSlide(index,resetTimer=false){
+  if(!heroSlides.length)return;
+  activeHeroSlide=(index+heroSlides.length)%heroSlides.length;
+  const slide=heroSlides[activeHeroSlide];
+  const hero=$("homepageHero");
+  const eyebrow=$("heroEyebrow"),heading=$("heroHeading"),subtitle=$("heroSubtitle");
+  const button=$("heroButton"),image=$("heroBackground");
+  if(!slide||slide.is_active===false)return;
+  hero?.classList.remove("is-hidden");
+  if(eyebrow)eyebrow.textContent=slide.eyebrow||"CRAFT FOR KINGS";
+  if(heading)heading.textContent=slide.heading||"KINGSMADE";
+  if(subtitle)subtitle.textContent=slide.subtitle||"SIMPLE / CLEAN / TIMELESS";
+  if(button){
+    button.textContent=(slide.button_text||"START SHOPPING").replace(/[↗→›»]/g,"").trim();
+    const raw=typeof slide.button_url==="string"?slide.button_url.trim():"#shop";
+    try{
+      const target=new URL(raw,location.origin);
+      button.href=(target.origin===location.origin&&["https:","http:"].includes(target.protocol))||
+        (target.protocol==="https:"&&target.origin!==location.origin)?target.href:"#shop";
+    }catch{button.href="#shop";}
+  }
+  const imageURL=safeImageURL(slide.image_url||"");
+  if(image){
+    if(imageURL){image.src=imageURL;image.hidden=false;}
+    else{image.removeAttribute("src");image.hidden=true;}
+  }
+  renderHeroDots();
+  if(resetTimer&&heroRotation){
+    clearInterval(heroRotation);
+    startHeroRotation();
+  }
+}
+function startHeroRotation(){
+  if(heroRotation)clearInterval(heroRotation);
+  if(heroSlides.filter(s=>s.is_active!==false).length<2)return;
+  heroRotation=setInterval(()=>{
+    let next=activeHeroSlide;
+    for(let tries=0;tries<heroSlides.length;tries++){
+      next=(next+1)%heroSlides.length;
+      if(heroSlides[next].is_active!==false)break;
     }
-  } catch {}
-
-  return "/#shop";
+    showHeroSlide(next);
+  },5000);
+}
+async function loadKingsmadeHero(){
+  try{
+    const response=await fetch("/api/hero-slides",{cache:"no-store"});
+    if(!response.ok)throw new Error("Hero slides unavailable");
+    const data=await response.json();
+    heroSlides=Array.isArray(data.slides)?data.slides.filter(s=>s&&s.is_active!==false):[];
+  }catch(error){
+    console.warn("KINGSMADE hero slider:",error);
+    heroSlides=[];
+  }
+  if(!heroSlides.length){
+    heroSlides=[{eyebrow:"CRAFT FOR KINGS",heading:"KINGSMADE",subtitle:"SIMPLE / CLEAN / TIMELESS",image_url:"",button_text:"START SHOPPING",button_url:"#shop",is_active:true}];
+  }
+  activeHeroSlide=0;
+  showHeroSlide(0);
+  startHeroRotation();
+}
+function initStorefrontControls() {
+  const menuButton = document.querySelector(".menu-btn");
+  const bagButton = document.querySelector(".bag-btn");
+  const closeCartButton = document.querySelector(".cart-head button");
+  const checkoutButton = $("checkoutButton");
+  const overlay = $("overlay");
+  menuButton?.addEventListener("click", () => {
+    document.body.classList.toggle("menu-open");
+    menuButton.setAttribute("aria-expanded", document.body.classList.contains("menu-open") ? "true" : "false");
+  });
+  bagButton?.addEventListener("click", () => toggleCart());
+  closeCartButton?.addEventListener("click", () => toggleCart(false));
+  checkoutButton?.addEventListener("click", checkout);
+  overlay?.addEventListener("click", () => toggleCart(false));
+  document.querySelectorAll(".mobile-nav a").forEach(link => link.addEventListener("click", () => {
+    document.body.classList.remove("menu-open");
+    menuButton?.setAttribute("aria-expanded", "false");
+  }));
 }
 
-async function loadKingsmadeHero() {
-  const hero = $("homepageHero");
-  if (!hero) return;
 
-  try {
-    const response = await fetch("/api/hero", {
-      method: "GET",
-      cache: "no-store"
-    });
-
-    if (!response.ok) return;
-
-    const data = await response.json();
-    const settings = data.hero;
-
-    if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
-      return;
-    }
-
-    hero.classList.toggle(
-      "is-hidden",
-      settings.is_visible !== undefined &&
-      Number(settings.is_visible) !== 1
-    );
-
-    if (typeof settings.heading === "string" && settings.heading) {
-      $("heroHeading").textContent = settings.heading;
-    }
-
-    if (typeof settings.subtitle === "string" && settings.subtitle) {
-      $("heroSubtitle").textContent = settings.subtitle;
-    }
-
-    const button = $("heroButton");
-    button.textContent =
-      (typeof settings.button_text === "string" && settings.button_text
-        ? settings.button_text
-        : "DISCOVER THE COLLECTION") + " ↗";
-    button.href = safeNavigationURL(settings.button_url);
-
-    const image = $("heroBackground");
-    const imageURL = safeImageURL(settings.image_url);
-
-    if (imageURL) {
-      image.src = imageURL;
-      image.hidden = false;
-    } else {
-      image.removeAttribute("src");
-      image.hidden = true;
-    }
-  } catch (error) {
-    console.error("KINGSMADE hero settings:", error);
+/* ---------------- SHAREABLE CATEGORY PAGES ---------------- */
+function slugifyCategory(value) {
+  return String(value || "").normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "")
+    .toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function initCategoryRouting() {
+  const tiles = Array.from(document.querySelectorAll(".category-tile[data-category]"));
+  const categoryBySlug = new Map();
+  tiles.forEach(tile => {
+    const name = tile.dataset.category || "", slug = slugifyCategory(name);
+    if (!slug) return;
+    categoryBySlug.set(slug, name);
+    tile.href = "/category/" + slug;
+  });
+  const match = new RegExp("^/category/([a-z0-9-]+)/?$", "i").exec(location.pathname);
+  if (!match) return;
+  const slug = match[1].toLowerCase();
+  currentCategoryName = categoryBySlug.get(slug) || "";
+  selectedCategory = currentCategoryName ? slug : "__category_not_found__";
+  const hero = $("homepageHero"), categorySection = $("categories");
+  if (hero) hero.hidden = true;
+  if (categorySection) categorySection.hidden = true;
+  document.querySelectorAll(".desktop-nav a, .mobile-nav a").forEach(link => {
+    const href = link.getAttribute("href") || "";
+    if (href === "#categories") link.href = "/#categories";
+    if (href === "#about" || href === "#footer") link.href = "/#footer";
+  });
+  const collection = document.querySelector(".reference-products");
+  const heading = collection?.querySelector(".reference-section-heading h2");
+  if (heading) heading.textContent = currentCategoryName ? currentCategoryName.toUpperCase() : "CATEGORY NOT FOUND";
+  const intro = document.createElement("div");
+  intro.className = "category-page-intro";
+  const back = document.createElement("a");
+  back.href = "/#categories";
+  back.textContent = "← ALL CATEGORIES";
+  const title = document.createElement("h1");
+  title.textContent = currentCategoryName || "Category not found";
+  const note = document.createElement("p");
+  note.textContent = currentCategoryName
+    ? "Explore the KINGSMADE " + currentCategoryName.toLowerCase() + " collection."
+    : "This category could not be found. Browse all KINGSMADE categories.";
+  intro.append(back, title, note);
+  collection?.insertBefore(intro, collection.firstChild);
+  const search = $("storeSearch");
+  if (search) search.placeholder = currentCategoryName ? "Search " + currentCategoryName.toLowerCase() + "…" : "Search products…";
+  if (!currentCategoryName) {
+    const grid = $("products");
+    if (grid) grid.textContent = "Please return to all categories to continue shopping.";
   }
 }
 
 /* ---------------- INITIALISE STORE ---------------- */
-
-$("menuButton")?.addEventListener("click", () => {
-  document.body.classList.toggle("menu-open");
-});
-
-$("bagButton")?.addEventListener("click", () => toggleCart());
-
-$("closeCartButton")?.addEventListener("click", () => toggleCart(false));
-
-$("checkoutButton")?.addEventListener("click", checkout);
-
-$("overlay")?.addEventListener("click", () => toggleCart(false));
-
+initStorefrontControls();
+$("storeSearch")?.addEventListener("input",renderProducts);
+initCategoryRouting();
 renderCart();
 loadProducts();
 loadKingsmadeHero();
