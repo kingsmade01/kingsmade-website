@@ -23,6 +23,11 @@ function json(data, status = 200, extraHeaders = {}) {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+      "X-Frame-Options": "DENY",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Strict-Transport-Security": "max-age=15552000",
       ...extraHeaders
     }
   });
@@ -198,10 +203,7 @@ async function api(request, env, url) {
   if (path === "/api/health" && method === "GET") {
     return json({
       ok: true,
-      service: "KINGSMADE PRIVATE COMMAND CENTER",
-      database: Boolean(env.DB),
-      paystack_configured: Boolean(env.PAYSTACK_SECRET_KEY),
-      exchange_rate_provider_configured: Boolean(env.FXAPI_KEY)
+      service: "KINGSMADE PRIVATE COMMAND CENTER"
     });
   }
   if (path === "/api/login" && method === "POST") {
@@ -1404,7 +1406,7 @@ var worker_default = {
     const url = new URL(request.url);
     if (!env.DB) {
       return json({
-        error: "Missing D1 binding. Add DB \u2192 kingsmade-store to this Worker."
+        error: "The admin service is temporarily unavailable."
       }, 503);
     }
     if (url.pathname === "/" || url.pathname === "/admin" || url.pathname === "/admin/") {
@@ -1414,8 +1416,9 @@ var worker_default = {
       try {
         return await api(request, env, url);
       } catch (error) {
+        console.error("KINGSMADE admin API error:", error);
         return json({
-          error: error?.message || "Unexpected server error."
+          error: "An unexpected server error occurred."
         }, 500);
       }
     }
