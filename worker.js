@@ -121,22 +121,29 @@ async function getShareSettings(env) {
 
 async function addSocialMetadata(response, request, env) {
   if (!response || !response.ok || request.method === "HEAD" ||
-      !(response.headers.get("content-type") || "").toLowerCase().includes("text/html")) return response;
+      !(response.headers.get("content-type") || "").toLowerCase().includes("text/html")) {
+    return response;
+  }
+
   const settings = await getShareSettings(env);
   if (!settings) return response;
+
   const requestUrl = new URL(request.url);
   const domain = String(settings.primary_domain || requestUrl.hostname).toLowerCase();
-  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(domain)) return response;
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) return response;
+
   const canonical = "https://" + domain + requestUrl.pathname;
   const title = htmlEscape(settings.page_title || settings.site_name || "KINGSMADE | Craft for Kings");
   const description = htmlEscape(settings.description || "Premium menswear, accessories and fabrics. Simple. Clean. Timeless.");
   let image = String(settings.image_url || "").trim();
   if (image.startsWith("/")) image = "https://" + domain + image;
-  if (image && !/^https:\\/\\//i.test(image)) image = "";
+  if (image && !/^https:\/\//i.test(image)) image = "";
+
   let html = await response.text();
-  html = html.replace(/<title>[^<]*<\\/title>/i, "<title>" + title + "</title>");
-  html = html.replace(/<meta\\s+name=["']description["']\\s+content=["'][^"']*["']\\s*\\/?>/i,
+  html = html.replace(/<title>[^<]*<\/title>/i, "<title>" + title + "</title>");
+  html = html.replace(/<meta\s+name=["']description["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="description" content="' + description + '">');
+
   const tags = [
     '<link rel="canonical" href="' + htmlEscape(canonical) + '">',
     '<meta property="og:type" content="website">',
@@ -151,13 +158,15 @@ async function addSocialMetadata(response, request, env) {
     '<meta name="twitter:title" content="' + title + '">',
     '<meta name="twitter:description" content="' + description + '">',
     image ? '<meta name="twitter:image" content="' + htmlEscape(image) + '">' : ''
-  ].filter(Boolean).join("\\n");
-  if (/<\\/head>/i.test(html)) html = html.replace(/<\\/head>/i, tags + "\\n</head>");
+  ].filter(Boolean).join("\n");
+
+  if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, tags + "\n</head>");
   else return response;
+
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.delete("content-encoding");
-  return new Response(html, {status:response.status,statusText:response.statusText,headers});
+  return new Response(html, { status: response.status, statusText: response.statusText, headers });
 }
 
 const PREVIEW_ASSETS = {
