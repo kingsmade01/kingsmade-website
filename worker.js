@@ -231,6 +231,40 @@ async function api(request, env, url) {
   if (path === "/api/me" && method === "GET") {
     return json({ authenticated: true });
   }
+  if (path === "/api/hero-slides" && method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS km_site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL)").run();
+    const row = await env.DB.prepare("SELECT setting_value FROM km_site_settings WHERE setting_key='hero_slides'").first();
+    let slides = [];
+    try { slides = row?.setting_value ? JSON.parse(row.setting_value) : []; } catch {}
+    if (!Array.isArray(slides)) slides = [];
+    return json({ slides });
+  }
+  if (path === "/api/hero-slides" && method === "PUT") {
+    const body = await bodyJSON(request);
+    if (!Array.isArray(body?.slides) || body.slides.length < 1 || body.slides.length > 10) {
+      return json({ error: "Add between 1 and 10 hero slides." }, 400);
+    }
+    const slides = [];
+    for (const [index, item] of body.slides.entries()) {
+      const heading = cleanText(item?.heading, 100);
+      const eyebrow = cleanText(item?.eyebrow, 100);
+      const subtitle = cleanText(item?.subtitle, 180);
+      const button_text = cleanText(item?.button_text, 50) || "START SHOPPING";
+      const image_url = cleanText(item?.image_url, 2000);
+      const button_url = cleanText(item?.button_url, 500) || "#shop";
+      let imageOK = !image_url;
+      try { const u = new URL(image_url); imageOK = u.protocol === "https:"; } catch {}
+      let buttonOK = button_url.startsWith("#") || button_url.startsWith("/");
+      try { const u = new URL(button_url); buttonOK = u.protocol === "https:"; } catch {}
+      if (!heading || !eyebrow || !subtitle || !imageOK || !buttonOK) {
+        return json({ error: "Slide " + (index + 1) + " needs heading, eyebrow, subtitle, a valid HTTPS image URL, and a safe button destination." }, 400);
+      }
+      slides.push({ id: String(item.id || crypto.randomUUID()), eyebrow, heading, subtitle, image_url, button_text, button_url, is_active: item.is_active !== false, sort_order: index });
+    }
+    if (!slides.some(slide => slide.is_active)) return json({ error: "At least one hero slide must remain active." }, 400);
+    await env.DB.prepare("INSERT INTO km_site_settings (setting_key,setting_value) VALUES ('hero_slides',?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value").bind(JSON.stringify(slides)).run();
+    return json({ ok: true, slides });
+  }
   if (path === "/api/dashboard" && method === "GET") {
     const [sales, expense, stock, orders, recent, dailySales, topProducts] = await Promise.all([
       env.DB.prepare("SELECT COALESCE(SUM(total_ngn),0) AS revenue, COUNT(*) AS paid_orders FROM orders WHERE LOWER(payment_status)=?").bind("paid").first(),
@@ -581,6 +615,7 @@ tr:last-child td{border-bottom:0}
     <nav class="nav">
       <button class="active" data-page="overview"><span class="ico">\u25C8</span>Overview</button>
       <button data-page="products"><span class="ico">\u25C7</span>Products</button>
+      <button data-page="hero-slides"><span class="ico">\u25A3</span>Hero slides</button>
       <button data-page="inventory"><span class="ico">\u25A6</span>Inventory</button>
       <button data-page="orders"><span class="ico">\u25A4</span>Orders</button>
       <button data-page="customers"><span class="ico">\u2659</span>Customers</button>
@@ -695,6 +730,15 @@ tr:last-child td{border-bottom:0}
       <div class="panel"><h3 class="panel-title">Best-selling products</h3><div id="topProductsTable"></div></div></div>
       <div class="notice">Analytics use verified paid orders and order-item records only. Pending and failed payments are excluded.</div>
     </section>
+    <section class="section" id="page-hero-slides">
+      <div class="section-head">
+        <div><h2>Homepage hero slides</h2><p class="muted">Manage the storefront hero carousel. Add, edit, reorder and publish slides.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="addHeroSlideBtn" type="button">+ Add slide</button><button class="btn" id="saveHeroSlidesBtn" type="button">Save all slides</button></div>
+      </div>
+      <div class="notice">Use a secure HTTPS image URL for each slide. The first active slide appears first. Keep at least one slide active.</div>
+      <div id="heroSlidesEditor"></div>
+      <div id="heroSlidesMessage" class="notice" aria-live="polite"></div>
+    </section>
     <section class="section" id="page-exchange">
       <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">\u21BB Update rate</button></div>
       <div class="grid" id="fxStats"></div>
@@ -718,6 +762,7 @@ tr:last-child td{border-bottom:0}
 <script>
 const $=id=>document.getElementById(id);
 let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,page:'overview'};
+let heroSlides=[];
 let seenOrderIds=new Set();
 let orderPollingReady=false;
 
@@ -801,6 +846,7 @@ function setPage(page){
   $('pageTitle').textContent=({
     overview:'Overview',
     products:'Products',
+    'hero-slides':'Homepage hero slides',
     orders:'Orders',
     customers:'Customers',
     complaints:'Complaints',
@@ -812,6 +858,7 @@ function setPage(page){
 
   $('sidebar').classList.remove('open');
 
+  if(page==='hero-slides')loadHeroSlides();
   if(page==='products')renderProducts();
   if(page==='orders')renderOrders();
   if(page==='customers')renderCustomers();
@@ -821,6 +868,71 @@ function setPage(page){
   if(page==='inventory')renderInventory();
   if(page==='analytics')renderAnalytics();
 }
+
+async function loadHeroSlides(){
+  const editor=$('heroSlidesEditor');
+  editor.innerHTML='<div class="empty">Loading hero slides…</div>';
+  try{
+    const data=await api('/api/hero-slides');
+    heroSlides=Array.isArray(data.slides)?data.slides:[];
+    renderHeroSlides();
+  }catch(error){editor.innerHTML='<div class="notice">'+esc(error.message)+'</div>';}
+}
+function renderHeroSlides(){
+  const editor=$('heroSlidesEditor');
+  if(!heroSlides.length){
+    heroSlides=[{id:'slide-'+Date.now(),eyebrow:'CRAFT FOR KINGS',heading:'KINGSMADE',subtitle:'simple / clean / timeless',image_url:'',button_text:'START SHOPPING',button_url:'#shop',is_active:true}];
+  }
+  editor.innerHTML=heroSlides.map((slide,index)=>'<article class="panel hero-slide-card" data-slide-index="'+index+'" style="margin:14px 0;padding:18px">'+
+    '<div class="section-head"><h3>Slide '+(index+1)+'</h3><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+    '<button class="btn ghost small" type="button" data-move-up="'+index+'" '+(index===0?'disabled':'')+'>Move up</button>'+
+    '<button class="btn ghost small" type="button" data-move-down="'+index+'" '+(index===heroSlides.length-1?'disabled':'')+'>Move down</button>'+
+    '<button class="btn danger small" type="button" data-remove-slide="'+index+'" '+(heroSlides.length===1?'disabled':'')+'>Remove</button></div></div>'+
+    '<div class="form-grid">'+
+    '<div class="field"><label>Small line</label><input data-field="eyebrow" maxlength="100" value="'+esc(slide.eyebrow||'')+'"></div>'+
+    '<div class="field"><label>Main heading</label><input data-field="heading" maxlength="100" value="'+esc(slide.heading||'')+'"></div>'+
+    '<div class="field span2"><label>Subtitle</label><input data-field="subtitle" maxlength="180" value="'+esc(slide.subtitle||'')+'"></div>'+
+    '<div class="field span2"><label>Background image HTTPS URL</label><input data-field="image_url" maxlength="2000" value="'+esc(slide.image_url||'')+'" placeholder="https://…"></div>'+
+    '<div class="field"><label>Button text</label><input data-field="button_text" maxlength="50" value="'+esc(slide.button_text||'START SHOPPING')+'"></div>'+
+    '<div class="field"><label>Button destination</label><input data-field="button_url" maxlength="500" value="'+esc(slide.button_url||'#shop')+'"></div>'+
+    '<div class="field"><label>Slide status</label><select data-field="is_active"><option value="true" '+(slide.is_active!==false?'selected':'')+'>Active</option><option value="false" '+(slide.is_active===false?'selected':'')+'>Hidden</option></select></div>'+
+    '</div></article>').join('');
+  editor.querySelectorAll('[data-move-up]').forEach(btn=>btn.addEventListener('click',()=>moveHeroSlide(Number(btn.dataset.moveUp),-1)));
+  editor.querySelectorAll('[data-move-down]').forEach(btn=>btn.addEventListener('click',()=>moveHeroSlide(Number(btn.dataset.moveDown),1)));
+  editor.querySelectorAll('[data-remove-slide]').forEach(btn=>btn.addEventListener('click',()=>{heroSlides.splice(Number(btn.dataset.removeSlide),1);renderHeroSlides();}));
+}
+function moveHeroSlide(index,direction){
+  const next=index+direction;
+  if(next<0||next>=heroSlides.length)return;
+  [heroSlides[index],heroSlides[next]]=[heroSlides[next],heroSlides[index]];
+  renderHeroSlides();
+}
+function collectHeroSlides(){
+  return Array.from($('heroSlidesEditor').querySelectorAll('[data-slide-index]')).map(card=>{
+    const get=name=>card.querySelector('[data-field="'+name+'"]')?.value||'';
+    const original=heroSlides[Number(card.dataset.slideIndex)]||{};
+    return {id:original.id,eyebrow:get('eyebrow'),heading:get('heading'),subtitle:get('subtitle'),image_url:get('image_url'),button_text:get('button_text'),button_url:get('button_url'),is_active:get('is_active')==='true'};
+  });
+}
+async function saveHeroSlides(){
+  const button=$('saveHeroSlidesBtn');
+  button.disabled=true;
+  $('heroSlidesMessage').textContent='Saving slides…';
+  try{
+    const data=await api('/api/hero-slides',{method:'PUT',body:JSON.stringify({slides:collectHeroSlides()})});
+    heroSlides=data.slides||[];
+    renderHeroSlides();
+    $('heroSlidesMessage').textContent='Hero slides saved. Refresh the storefront preview to see the changes.';
+    toast('Hero slides saved.');
+  }catch(error){$('heroSlidesMessage').textContent=error.message;}
+  finally{button.disabled=false;}
+}
+$('addHeroSlideBtn').addEventListener('click',()=>{
+  if(heroSlides.length>=10){toast('You can add up to 10 slides.');return;}
+  heroSlides.push({id:'slide-'+Date.now(),eyebrow:'CRAFT FOR KINGS',heading:'KINGSMADE',subtitle:'simple / clean / timeless',image_url:'',button_text:'START SHOPPING',button_url:'#shop',is_active:true});
+  renderHeroSlides();
+});
+$('saveHeroSlidesBtn').addEventListener('click',saveHeroSlides);
 
 function table(headers,rows){
   if(!rows.length)return '<div class="empty">No records to display yet.</div>';
