@@ -641,9 +641,12 @@ async function loadStoreCategories() {
         tile.href = "/category/" + slug;
         tile.dataset.category = name;
         const image = document.createElement("img");
-        image.src = safeImageURL(category.image_url || "") || "";
+        const imageURL = safeImageURL(category.image_url || "");
+        if (imageURL) image.src = imageURL;
+        else image.hidden = true;
         image.alt = name;
         image.loading = "lazy";
+        image.addEventListener("error", () => { image.hidden = true; });
         const label = document.createElement("span");
         label.textContent = name.toUpperCase();
         tile.append(image, label);
@@ -654,6 +657,7 @@ async function loadStoreCategories() {
     console.warn("KINGSMADE categories:", error);
   } finally {
     initCategoryRouting();
+    if (products.length) renderProducts();
   }
 }
 
