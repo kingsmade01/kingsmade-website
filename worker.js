@@ -17,14 +17,29 @@ const DEFAULT_HERO = {
   is_visible: 1
 };
 
+function secureResponse(response) {
+  const headers = new Headers(response.headers);
+
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "DENY");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  headers.set("Strict-Transport-Security", "max-age=31536000");
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 function json(data, status = 200) {
-  return Response.json(data, {
+  return secureResponse(Response.json(data, {
     status,
     headers: {
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff"
+      "Cache-Control": "no-store"
     }
-  });
+  }));
 }
 
 /* ---------------- PUBLIC PRODUCTS ---------------- */
@@ -133,13 +148,14 @@ export default {
       }
 
       if (!env.ASSETS) {
-        return new Response(
+        return secureResponse(new Response(
           "Static assets binding ASSETS is missing.",
           { status: 503 }
-        );
+        ));
       }
 
-      return await env.ASSETS.fetch(request);
+      const assetResponse = await env.ASSETS.fetch(request);
+      return secureResponse(assetResponse);
 
     } catch (error) {
       console.error("KINGSMADE storefront error:", error);
