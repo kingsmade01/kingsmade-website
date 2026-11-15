@@ -496,6 +496,7 @@ function initStorefrontControls() {
   const menuButton = document.querySelector(".menu-btn");
   const bagButton = document.querySelector(".bag-btn");
   const closeCartButton = document.querySelector(".cart-head button");
+  const checkoutButton = $("checkoutButton");
   const overlay = $("overlay");
   menuButton?.addEventListener("click", () => {
     document.body.classList.toggle("menu-open");
@@ -503,6 +504,7 @@ function initStorefrontControls() {
   });
   bagButton?.addEventListener("click", () => toggleCart());
   closeCartButton?.addEventListener("click", () => toggleCart(false));
+  checkoutButton?.addEventListener("click", checkout);
   overlay?.addEventListener("click", () => toggleCart(false));
   document.querySelectorAll(".mobile-nav a").forEach(link => link.addEventListener("click", () => {
     document.body.classList.remove("menu-open");
