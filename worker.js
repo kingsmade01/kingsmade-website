@@ -880,7 +880,7 @@ function setPage(page){
 }
 
 function updateSharePreview(){
-  const domain=($('shareDomain').value||'kingsmade.com.ng').trim().replace(/^https?:\\/\\//,'').replace(/\\/$/,'');
+  const domain=($('shareDomain').value||'kingsmade.com.ng').trim().replace(/^https?:[/][/]/,'').replace(/[/]$/,'');
   $('sharePreviewDomain').textContent=domain;$('sharePreviewTitle').textContent=$('sharePageTitle').value||'KINGSMADE | Craft for Kings';$('sharePreviewDescription').textContent=$('shareDescription').value||'';$('shareCanonical').textContent='Canonical URL: https://'+domain+'/';
   const image=$('shareImage').value.trim(),preview=$('sharePreviewImage');preview.style.backgroundImage=image?'url("'+image.replace(/["\\\\]/g,'')+'")':'';preview.style.backgroundSize='cover';preview.style.backgroundPosition='center';preview.textContent=image?'':'KINGSMADE';
 }
