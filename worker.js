@@ -9,6 +9,23 @@ var SESSION_HOURS = 8;
 var MAX_FAILED_LOGINS = 5;
 var LOGIN_WINDOW_MS = 15 * 60 * 1000;
 var authTablesReady = null;
+var siteSettingsReady = null;
+async function ensureSiteSettings(env) {
+  if (!siteSettingsReady) siteSettingsReady = env.DB.prepare(`CREATE TABLE IF NOT EXISTS site_settings (id INTEGER PRIMARY KEY CHECK (id=1), primary_domain TEXT NOT NULL DEFAULT 'kingsmade.com.ng', site_name TEXT NOT NULL DEFAULT 'KINGSMADE', page_title TEXT NOT NULL DEFAULT 'KINGSMADE | Craft for Kings', description TEXT NOT NULL DEFAULT 'Premium menswear, accessories and fabrics. Simple. Clean. Timeless.', image_url TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run().catch(error => { siteSettingsReady = null; throw error; });
+  await siteSettingsReady;
+}
+function cleanDomain(value) {
+  const domain = String(value || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').replace(/\\/$/, '');
+  if (domain.length > 253 || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(domain)) return null;
+  return domain;
+}
+function cleanShareImage(value) {
+  const image = String(value || '').trim();
+  if (!image) return '';
+  if (image.length > 2048 || image.startsWith('//')) return null;
+  if (image.startsWith('/')) return image;
+  try { const parsed = new URL(image); return parsed.protocol === 'https:' ? parsed.href : null; } catch { return null; }
+}
 function ensureAuthTables(env) {
  if (!authTablesReady) authTablesReady = env.DB.batch([
   env.DB.prepare("CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT NOT NULL, attempted_at INTEGER NOT NULL)"),
@@ -230,6 +247,26 @@ async function api(request, env, url) {
   }
   if (path === "/api/me" && method === "GET") {
     return json({ authenticated: true });
+  }
+  if (path === "/api/site-settings" && method === "GET") {
+    await ensureSiteSettings(env);
+    const settings = await env.DB.prepare("SELECT primary_domain, site_name, page_title, description, image_url, updated_at FROM site_settings WHERE id=1").first();
+    return json({ settings: settings || {} });
+  }
+  if (path === "/api/site-settings" && method === "PUT") {
+    await ensureSiteSettings(env);
+    const body = await bodyJSON(request);
+    if (!body || typeof body !== 'object') return json({ error: 'Invalid settings.' }, 400);
+    const domain = cleanDomain(body.primary_domain);
+    const siteName = cleanText(body.site_name, 80);
+    const pageTitle = cleanText(body.page_title, 120);
+    const description = cleanText(body.description, 300);
+    const imageUrl = cleanShareImage(body.image_url);
+    if (!domain) return json({ error: 'Enter a valid domain, such as kingsmade.com or kingsmade.com.ng.' }, 400);
+    if (!siteName || !pageTitle || !description) return json({ error: 'Site name, page title and description are required.' }, 400);
+    if (imageUrl === null) return json({ error: 'Preview image must be an HTTPS URL or a site-relative path.' }, 400);
+    await env.DB.prepare(`INSERT INTO site_settings (id, primary_domain, site_name, page_title, description, image_url, updated_at) VALUES (1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET primary_domain=excluded.primary_domain, site_name=excluded.site_name, page_title=excluded.page_title, description=excluded.description, image_url=excluded.image_url, updated_at=CURRENT_TIMESTAMP`).bind(domain, siteName, pageTitle, description, imageUrl).run();
+    return json({ ok: true, settings: { primary_domain: domain, site_name: siteName, page_title: pageTitle, description, image_url: imageUrl, canonical_url: 'https://' + domain + '/' } });
   }
   if (path === "/api/dashboard" && method === "GET") {
     const [sales, expense, stock, orders, recent, dailySales, topProducts] = await Promise.all([
@@ -587,7 +624,8 @@ tr:last-child td{border-bottom:0}
       <button data-page="complaints"><span class="ico">\u2709</span>Complaints</button>
       <button data-page="expenses"><span class="ico">\u2197</span>Expenses</button>
       <button data-page="exchange"><span class="ico">\u21C4</span>Exchange rate</button>
-      <button data-page="analytics"><span class="ico">\u25A7</span>Analytics</button>
+      <button data-page="analytics">
+      <button data-page="sharing"><span class="ico">S</span>Social sharing &amp; domain</button><span class="ico">\u25A7</span>Analytics</button>
     </nav>
     <div class="side-bottom">
       <div class="side-user">AUTHORIZED ADMINISTRATOR</div>
@@ -694,6 +732,23 @@ tr:last-child td{border-bottom:0}
       <div class="two-col"><div class="panel"><h3 class="panel-title">Daily paid sales</h3><div id="dailySalesTable"></div></div>
       <div class="panel"><h3 class="panel-title">Best-selling products</h3><div id="topProductsTable"></div></div></div>
       <div class="notice">Analytics use verified paid orders and order-item records only. Pending and failed payments are excluded.</div>
+    </section>
+    <section class="section" id="page-sharing">
+      <div class="section-head"><h2>Social sharing &amp; domain settings</h2><span class="muted">Manage how KINGSMADE appears when links are shared</span></div>
+      <div class="two-col"><div class="panel">
+        <h3 class="panel-title">Website identity</h3>
+        <label class="field-label" for="shareDomain">Primary domain</label><input id="shareDomain" class="field-input" maxlength="253" placeholder="kingsmade.com.ng">
+        <div class="muted" style="font-size:11px;margin:5px 0 14px">Enter the domain only, without https://. This changes metadata URLs, not domain registration or DNS.</div>
+        <label class="field-label" for="shareSiteName">Website name</label><input id="shareSiteName" class="field-input" maxlength="80" placeholder="KINGSMADE">
+        <label class="field-label" for="sharePageTitle">Page title</label><input id="sharePageTitle" class="field-input" maxlength="120" placeholder="KINGSMADE | Craft for Kings">
+        <label class="field-label" for="shareDescription">Sharing description</label><textarea id="shareDescription" class="field-input" maxlength="300" rows="3" placeholder="Premium menswear, accessories and fabrics."></textarea>
+        <label class="field-label" for="shareImage">Social preview image URL</label><input id="shareImage" class="field-input" maxlength="2048" placeholder="/images/kingsmade-share.jpg or https://...">
+        <div class="muted" style="font-size:11px;margin:5px 0 14px">Use a public HTTPS image URL or site-relative path. Recommended image size: 1200 × 630 pixels.</div>
+        <button class="btn" id="saveShareSettings">Save sharing settings</button><div id="shareSettingsStatus" class="muted" role="status" style="margin-top:10px"></div>
+      </div><div class="panel"><h3 class="panel-title">Link preview</h3>
+        <div id="sharePreview" style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel2)"><div id="sharePreviewImage" style="aspect-ratio:1200/630;background:#07182d;display:grid;place-items:center;color:#e0c99b;letter-spacing:.2em;font-family:Georgia,serif">KINGSMADE</div><div style="padding:14px"><div id="sharePreviewDomain" class="muted" style="font-size:10px">kingsmade.com.ng</div><strong id="sharePreviewTitle">KINGSMADE | Craft for Kings</strong><p id="sharePreviewDescription" class="muted" style="font-size:12px;margin:7px 0 0">Premium menswear, accessories and fabrics. Simple. Clean. Timeless.</p></div></div>
+        <div class="notice" style="margin-top:14px">Social platforms cache previews. Use their sharing debugger or refresh tool if an old preview remains.</div><div id="shareCanonical" class="muted" style="font-size:11px;overflow-wrap:anywhere;margin-top:10px">Canonical URL: https://kingsmade.com.ng/</div>
+      </div></div>
     </section>
     <section class="section" id="page-exchange">
       <div class="section-head"><h2>Exchange-rate intelligence</h2><button class="btn" id="fxRefreshBtn">\u21BB Update rate</button></div>
@@ -807,7 +862,8 @@ function setPage(page){
     expenses:'Expenses',
     exchange:'Exchange rate',
     inventory:'Inventory control',
-    analytics:'Business analytics'
+    analytics:'Business analytics',
+    sharing:'Social sharing & domain'
   })[page]||'Overview';
 
   $('sidebar').classList.remove('open');
@@ -820,8 +876,20 @@ function setPage(page){
   if(page==='exchange')renderExchange();
   if(page==='inventory')renderInventory();
   if(page==='analytics')renderAnalytics();
+  if(page==='sharing')loadSiteSettings();
 }
 
+function updateSharePreview(){
+  const domain=($('shareDomain').value||'kingsmade.com.ng').trim().replace(/^https?:\\/\\//,'').replace(/\\/$/,'');
+  $('sharePreviewDomain').textContent=domain;$('sharePreviewTitle').textContent=$('sharePageTitle').value||'KINGSMADE | Craft for Kings';$('sharePreviewDescription').textContent=$('shareDescription').value||'';$('shareCanonical').textContent='Canonical URL: https://'+domain+'/';
+  const image=$('shareImage').value.trim(),preview=$('sharePreviewImage');preview.style.backgroundImage=image?'url("'+image.replace(/["\\\\]/g,'')+'")':'';preview.style.backgroundSize='cover';preview.style.backgroundPosition='center';preview.textContent=image?'':'KINGSMADE';
+}
+async function loadSiteSettings(){
+  $('shareSettingsStatus').textContent='Loading saved settings…';try{const data=await api('/api/site-settings');const v=data.settings||{};$('shareDomain').value=v.primary_domain||'kingsmade.com.ng';$('shareSiteName').value=v.site_name||'KINGSMADE';$('sharePageTitle').value=v.page_title||'KINGSMADE | Craft for Kings';$('shareDescription').value=v.description||'Premium menswear, accessories and fabrics. Simple. Clean. Timeless.';$('shareImage').value=v.image_url||'';updateSharePreview();$('shareSettingsStatus').textContent='Saved settings loaded.';}catch(e){$('shareSettingsStatus').textContent=e.message;}
+}
+async function saveSiteSettings(){
+  const button=$('saveShareSettings');button.disabled=true;$('shareSettingsStatus').textContent='Saving…';try{const data=await api('/api/site-settings',{method:'PUT',body:JSON.stringify({primary_domain:$('shareDomain').value,site_name:$('shareSiteName').value,page_title:$('sharePageTitle').value,description:$('shareDescription').value,image_url:$('shareImage').value})});$('shareSettingsStatus').textContent='Saved. Canonical URL: '+(data.settings?.canonical_url||'');updateSharePreview();}catch(e){$('shareSettingsStatus').textContent=e.message;}finally{button.disabled=false;}
+}
 function table(headers,rows){
   if(!rows.length)return '<div class="empty">No records to display yet.</div>';
 
@@ -1367,6 +1435,8 @@ $('loginPassword').addEventListener('keydown',e=>{
 });
 $('logoutBtn').addEventListener('click',logout);
 $('refreshBtn').addEventListener('click',loadAll);
+$('saveShareSettings').addEventListener('click',saveSiteSettings);
+['shareDomain','shareSiteName','sharePageTitle','shareDescription','shareImage'].forEach(id=>$(id).addEventListener('input',updateSharePreview));
 $('menuBtn').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 document.querySelectorAll('.nav button').forEach(b=>
   b.addEventListener('click',()=>setPage(b.dataset.page))
