@@ -501,7 +501,7 @@ function showHeroSlide(index,resetTimer=false){
   if(heading)heading.textContent=slide.heading||"KINGSMADE";
   if(subtitle)subtitle.textContent=slide.subtitle||"SIMPLE / CLEAN / TIMELESS";
   if(button){
-    button.textContent=(slide.button_text||"START SHOPPING").replace(/[↗→]/g,"").trim()+"  ›";
+    button.textContent=(slide.button_text||"START SHOPPING").replace(/[↗→›»]/g,"").trim();
     const raw=typeof slide.button_url==="string"?slide.button_url.trim():"#shop";
     try{
       const target=new URL(raw,location.origin);
