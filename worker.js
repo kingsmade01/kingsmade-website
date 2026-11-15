@@ -15,8 +15,8 @@ async function ensureSiteSettings(env) {
   await siteSettingsReady;
 }
 function cleanDomain(value) {
-  const domain = String(value || '').trim().toLowerCase().replace(/^https?:\\/\\//, '').replace(/\\/$/, '');
-  if (domain.length > 253 || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(domain)) return null;
+  const domain = String(value || '').trim().toLowerCase().replace(/^https?:[/][/]/, '').replace(/[/]$/, '');
+  if (domain.length > 253 || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,63}$/.test(domain)) return null;
   return domain;
 }
 function cleanShareImage(value) {
