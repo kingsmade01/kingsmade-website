@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f5f1e9">
+<meta name="theme-color" content="#071b33">
 <meta name="description" content="KINGSMADE — Premium menswear. Style is a statement. Excellence is a standard.">
 <title>KINGSMADE | An Expression of Excellence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,10 +30,10 @@
   <img id="heroBackground" class="hero-image" alt="" hidden>
   <div class="hero-shade"></div>
   <div class="hero-content">
-    <p class="eyebrow" id="heroEyebrow">KINGSMADE · LUXURY MENSWEAR</p>
-    <h1 id="heroHeading">AN EXPRESSION<br>OF EXCELLENCE.</h1>
-    <p class="hero-copy" id="heroSubtitle">Style is a statement. Excellence is a standard.</p>
-    <a class="shop-btn" id="heroButton" href="#shop">DISCOVER THE COLLECTION <span>↗</span></a>
+    <p class="eyebrow" id="heroEyebrow">KINGSMADE</p>
+    <h1 id="heroHeading">CRAFT FOR KINGS</h1>
+    <p class="hero-copy" id="heroSubtitle">simple / clean / timeless</p>
+    <a class="shop-btn" id="heroButton" href="#shop">START SHOPPING</a>
   </div>
   <div class="hero-signature"><span>KM</span><b>KINGSMADE</b><small>CRAFT FOR KINGS</small></div>
   <div class="hero-index">01 <i></i> THE SIGNATURE COLLECTION</div>
@@ -47,6 +47,12 @@
     <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=700&q=85" alt="Hoodies"><span>02 / HOODIES</span></a>
     <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1517438476312-10d79c077509?auto=format&fit=crop&w=700&q=85" alt="Footwear"><span>03 / FOOTWEAR</span></a>
     <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=700&q=85" alt="Accessories"><span>04 / ACCESSORIES</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=85" alt="Watches"><span>05 / WATCHES</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=700&q=85" alt="Bracelets"><span>06 / BRACELETS</span></a>
+    <a class="category-tile category-fabric" href="#shop"><span>07 / FABRICS & YARDS</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=85" alt="Shirts"><span>08 / SHIRTS</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=700&q=85" alt="Trousers"><span>09 / TROUSERS</span></a>
+    <a class="category-tile category-traditional" href="#shop"><span>10 / TRADITIONAL WEAR</span></a>
   </div>
 </section>
 <section class="collection section-wrap" id="shop">
@@ -68,7 +74,7 @@
  <div class="footer-main"><div class="footer-brand"><span>KINGSMADE</span><small>CRAFT FOR KINGS</small><p>Premium menswear.<br>Made for those who set the standard.</p></div>
  <div><b>EXPLORE</b><a href="#shop">Shop all</a><a href="#categories">Categories</a><a href="#shop">New arrivals</a></div>
  <div><b>CLIENT CARE</b><a href="mailto:kingsmade01@gmail.com">Contact</a><a href="mailto:kingsmade01@gmail.com">Customer support</a></div>
- <div><b>FOLLOW KINGSMADE</b><a href="https://www.instagram.com/kingsmade01/" target="_blank" rel="noopener">Instagram ↗</a><a href="https://x.com/kingsmadebrand/" target="_blank" rel="noopener">X ↗</a><a href="https://www.facebook.com/profile.php?id=61595227090232" target="_blank" rel="noopener">Facebook ↗</a></div></div>
+ <div><b>FOLLOW KINGSMADE</b><a href="https://www.instagram.com/kingsmadebrand/" target="_blank" rel="noopener">Instagram</a><a href="https://x.com/kingsmadebrand/" target="_blank" rel="noopener">X</a><a href="https://www.facebook.com/profile.php?id=61595227090232" target="_blank" rel="noopener">Facebook</a></div></div>
  <div class="footer-bottom"><span>© 2026 KINGSMADE. ALL RIGHTS RESERVED.</span><span>EST. 2025 · CRAFT FOR KINGS</span></div>
 </footer>
 <script src="/script.js" defer></script>
@@ -84,8 +90,14 @@ async function loadKingsmadeHero(){
   if(s.heading)document.getElementById("heroHeading").textContent=s.heading;
   if(s.subtitle)document.getElementById("heroSubtitle").textContent=s.subtitle;
   const button=document.getElementById("heroButton");
-  button.textContent=(s.button_text||"DISCOVER THE COLLECTION")+" ↗";
-  button.href=s.button_url||"#shop";
+  button.textContent=(s.button_text||"START SHOPPING").replace(/[↗→]/g,"").trim();
+  const rawButtonURL=typeof s.button_url==="string"?s.button_url.trim():"";
+  try{
+   const target=new URL(rawButtonURL||"#shop",location.origin);
+   button.href=(target.origin===location.origin&&["https:","http:"].includes(target.protocol))||
+    (target.protocol==="https:"&&target.origin!==location.origin)
+     ?target.href:"#shop";
+  }catch{button.href="#shop";}
   const image=document.getElementById("heroBackground");
   if(typeof s.image_url==="string"&&s.image_url.trim()){image.src=s.image_url;image.hidden=false;}
  }catch(e){console.error("Hero settings:",e);}
