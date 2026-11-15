@@ -733,6 +733,7 @@ tr:last-child td{border-bottom:0}
       <div class="panel"><h3 class="panel-title">Best-selling products</h3><div id="topProductsTable"></div></div></div>
       <div class="notice">Analytics use verified paid orders and order-item records only. Pending and failed payments are excluded.</div>
     </section>
+    <style>#page-sharing label{display:block;font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:12px 0 6px}#page-sharing input,#page-sharing textarea{display:block;width:100%;background:#10100f;color:var(--ivory);border:1px solid #393932;border-radius:9px;padding:11px 12px;outline:none;margin:0 0 8px;font:inherit}#page-sharing input:focus,#page-sharing textarea:focus{border-color:var(--gold)}</style>
     <section class="section" id="page-sharing">
       <div class="section-head"><h2>Social sharing &amp; domain settings</h2><span class="muted">Manage how KINGSMADE appears when links are shared</span></div>
       <div class="two-col"><div class="panel">
