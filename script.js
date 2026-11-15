@@ -461,7 +461,57 @@ function checkout() {
   );
 }
 
-/* ---------------- INITIALISE STORE ---------------- */
+/* ---------------- HERO SETTINGS ---------------- */
+async function loadKingsmadeHero() {
+  const hero = $("homepageHero");
+  if (!hero) return;
+  try {
+    const response = await fetch("/api/hero", { cache: "no-store" });
+    if (!response.ok) return;
+    const data = await response.json();
+    const settings = data.hero;
+    if (!settings || typeof settings !== "object") return;
+    hero.classList.toggle("is-hidden", settings.is_visible !== undefined && Number(settings.is_visible) !== 1);
+    if (typeof settings.heading === "string" && settings.heading.trim()) $("heroHeading").textContent = settings.heading;
+    if (typeof settings.subtitle === "string" && settings.subtitle.trim()) $("heroSubtitle").textContent = settings.subtitle;
+    const button = $("heroButton");
+    if (button) {
+      button.textContent = String(settings.button_text || "START SHOPPING").replace(/[↗→]/g, "").trim();
+      const raw = typeof settings.button_url === "string" ? settings.button_url.trim() : "";
+      try {
+        const target = new URL(raw || "#shop", location.origin);
+        const sameOrigin = target.origin === location.origin && ["https:", "http:"].includes(target.protocol);
+        const secureExternal = target.protocol === "https:" && target.origin !== location.origin;
+        button.href = sameOrigin || secureExternal ? target.href : "#shop";
+      } catch { button.href = "#shop"; }
+    }
+    const image = $("heroBackground");
+    if (image && typeof settings.image_url === "string" && settings.image_url.trim()) {
+      const safeURL = safeImageURL(settings.image_url);
+      if (safeURL) { image.src = safeURL; image.hidden = false; }
+    }
+  } catch (error) { console.error("KINGSMADE hero settings:", error); }
+}
+function initStorefrontControls() {
+  const menuButton = document.querySelector(".menu-btn");
+  const bagButton = document.querySelector(".bag-btn");
+  const closeCartButton = document.querySelector(".cart-head button");
+  const overlay = $("overlay");
+  menuButton?.addEventListener("click", () => {
+    document.body.classList.toggle("menu-open");
+    menuButton.setAttribute("aria-expanded", document.body.classList.contains("menu-open") ? "true" : "false");
+  });
+  bagButton?.addEventListener("click", () => toggleCart());
+  closeCartButton?.addEventListener("click", () => toggleCart(false));
+  overlay?.addEventListener("click", () => toggleCart(false));
+  document.querySelectorAll(".mobile-nav a").forEach(link => link.addEventListener("click", () => {
+    document.body.classList.remove("menu-open");
+    menuButton?.setAttribute("aria-expanded", "false");
+  }));
+}
 
+/* ---------------- INITIALISE STORE ---------------- */
+initStorefrontControls();
 renderCart();
 loadProducts();
+loadKingsmadeHero();
