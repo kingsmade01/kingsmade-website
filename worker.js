@@ -158,13 +158,14 @@ async function addSocialMetadata(response, request, env) {
     '<meta name="twitter:title" content="' + title + '">',
     '<meta name="twitter:description" content="' + description + '">',
     image ? '<meta name="twitter:image" content="' + htmlEscape(image) + '">' : ''
-  ].filter(Boolean).join("\\n");
+  ].filter(Boolean).join("\n");
 
-  if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, tags + "\\n</head>");
+  if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, tags + "\n</head>");
   else return response;
 
   const headers = new Headers(response.headers);
   headers.delete("content-length");
+  headers.delete("content-encoding");
   return new Response(html, { status: response.status, statusText: response.statusText, headers });
 }
 
