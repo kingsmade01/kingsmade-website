@@ -85,7 +85,16 @@ async function loadKingsmadeHero(){
   if(s.subtitle)document.getElementById("heroSubtitle").textContent=s.subtitle;
   const button=document.getElementById("heroButton");
   button.textContent=(s.button_text||"DISCOVER THE COLLECTION")+" ↗";
-  button.href=s.button_url||"#shop";
+  // Accept only same-origin HTTPS destinations for the editable hero button.
+  // This blocks javascript:, data:, protocol-relative and unapproved external URLs.
+  try {
+   const target=new URL(typeof s.button_url==="string"?s.button_url:"/#shop",location.origin);
+   button.href=(target.origin===location.origin&&target.protocol==="https:")
+    ? target.pathname+target.search+target.hash
+    : "/#shop";
+  }catch{
+   button.href="/#shop";
+  }
   const image=document.getElementById("heroBackground");
   if(typeof s.image_url==="string"&&s.image_url.trim()){image.src=s.image_url;image.hidden=false;}
  }catch(e){console.error("Hero settings:",e);}
