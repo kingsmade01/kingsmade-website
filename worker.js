@@ -221,6 +221,7 @@ async function api(request, env, url) {
     if(session){try{await ensureAuthTables(env);await env.DB.batch([env.DB.prepare("DELETE FROM revoked_sessions WHERE expires_at<?").bind(Date.now()),env.DB.prepare("INSERT OR IGNORE INTO revoked_sessions (nonce,expires_at) VALUES (?,?)").bind(session.nonce,session.expiry)]);}catch{return json({error:"Could not safely revoke the session. Retry sign out."},503);}}
     return json({ok:true},200,{"Set-Cookie":cookieHeader("",0)});
   }
+  const authError = await requireAuth(request, env);
   if (authError) return authError;
   if (method !== "GET" && !checkOrigin(request)) {
     return json({ error: "Request origin rejected." }, 403);
