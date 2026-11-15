@@ -8,6 +8,7 @@
 
 let products = [];
 let cart = [];
+let selectedCategory = "";
 
 const CART_STORAGE_KEY = "kingsmade_cart_v1";
 
@@ -189,7 +190,14 @@ function renderProducts() {
     return;
   }
 
-  products.forEach(product => {
+  const query=($("storeSearch")?.value||"").trim().toLowerCase();
+  const visibleProducts=products.filter(product=>{
+    const matchesText=!query||(product.name+" "+(product.category||"")+" "+(product.description||"")).toLowerCase().includes(query);
+    const matchesCategory=!selectedCategory||(product.category||"").toLowerCase().includes(selectedCategory.toLowerCase());
+    return matchesText&&matchesCategory;
+  });
+  if(!visibleProducts.length){const empty=document.createElement("p");empty.textContent="No products match this selection yet.";container.appendChild(empty);return;}
+  visibleProducts.forEach(product => {
     const card = document.createElement("article");
     card.className = "card";
 
@@ -461,36 +469,85 @@ function checkout() {
   );
 }
 
-/* ---------------- HERO SETTINGS ---------------- */
-async function loadKingsmadeHero() {
-  const hero = $("homepageHero");
-  if (!hero) return;
-  try {
-    const response = await fetch("/api/hero", { cache: "no-store" });
-    if (!response.ok) return;
-    const data = await response.json();
-    const settings = data.hero;
-    if (!settings || typeof settings !== "object") return;
-    hero.classList.toggle("is-hidden", settings.is_visible !== undefined && Number(settings.is_visible) !== 1);
-    if (typeof settings.heading === "string" && settings.heading.trim()) $("heroHeading").textContent = settings.heading;
-    if (typeof settings.subtitle === "string" && settings.subtitle.trim()) $("heroSubtitle").textContent = settings.subtitle;
-    const button = $("heroButton");
-    if (button) {
-      button.textContent = String(settings.button_text || "START SHOPPING").replace(/[↗→]/g, "").trim();
-      const raw = typeof settings.button_url === "string" ? settings.button_url.trim() : "";
-      try {
-        const target = new URL(raw || "#shop", location.origin);
-        const sameOrigin = target.origin === location.origin && ["https:", "http:"].includes(target.protocol);
-        const secureExternal = target.protocol === "https:" && target.origin !== location.origin;
-        button.href = sameOrigin || secureExternal ? target.href : "#shop";
-      } catch { button.href = "#shop"; }
+/* ---------------- EDITABLE HERO SLIDER ---------------- */
+let heroSlides = [];
+let activeHeroSlide = 0;
+let heroRotation = null;
+
+function renderHeroDots(){
+  const dots=$("heroDots");
+  if(!dots)return;
+  dots.replaceChildren();
+  heroSlides.forEach((slide,index)=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className=index===activeHeroSlide?"active":"";
+    button.setAttribute("aria-label","Show hero slide "+(index+1));
+    button.setAttribute("aria-current",index===activeHeroSlide?"true":"false");
+    button.addEventListener("click",()=>showHeroSlide(index,true));
+    dots.appendChild(button);
+  });
+}
+function showHeroSlide(index,resetTimer=false){
+  if(!heroSlides.length)return;
+  activeHeroSlide=(index+heroSlides.length)%heroSlides.length;
+  const slide=heroSlides[activeHeroSlide];
+  const hero=$("homepageHero");
+  const eyebrow=$("heroEyebrow"),heading=$("heroHeading"),subtitle=$("heroSubtitle");
+  const button=$("heroButton"),image=$("heroBackground");
+  if(!slide||slide.is_active===false)return;
+  hero?.classList.remove("is-hidden");
+  if(eyebrow)eyebrow.textContent=slide.eyebrow||"CRAFT FOR KINGS";
+  if(heading)heading.textContent=slide.heading||"KINGSMADE";
+  if(subtitle)subtitle.textContent=slide.subtitle||"SIMPLE / CLEAN / TIMELESS";
+  if(button){
+    button.textContent=(slide.button_text||"START SHOPPING").replace(/[↗→]/g,"").trim()+"  ›";
+    const raw=typeof slide.button_url==="string"?slide.button_url.trim():"#shop";
+    try{
+      const target=new URL(raw,location.origin);
+      button.href=(target.origin===location.origin&&["https:","http:"].includes(target.protocol))||
+        (target.protocol==="https:"&&target.origin!==location.origin)?target.href:"#shop";
+    }catch{button.href="#shop";}
+  }
+  const imageURL=safeImageURL(slide.image_url||"");
+  if(image){
+    if(imageURL){image.src=imageURL;image.hidden=false;}
+    else{image.removeAttribute("src");image.hidden=true;}
+  }
+  renderHeroDots();
+  if(resetTimer&&heroRotation){
+    clearInterval(heroRotation);
+    startHeroRotation();
+  }
+}
+function startHeroRotation(){
+  if(heroRotation)clearInterval(heroRotation);
+  if(heroSlides.filter(s=>s.is_active!==false).length<2)return;
+  heroRotation=setInterval(()=>{
+    let next=activeHeroSlide;
+    for(let tries=0;tries<heroSlides.length;tries++){
+      next=(next+1)%heroSlides.length;
+      if(heroSlides[next].is_active!==false)break;
     }
-    const image = $("heroBackground");
-    if (image && typeof settings.image_url === "string" && settings.image_url.trim()) {
-      const safeURL = safeImageURL(settings.image_url);
-      if (safeURL) { image.src = safeURL; image.hidden = false; }
-    }
-  } catch (error) { console.error("KINGSMADE hero settings:", error); }
+    showHeroSlide(next);
+  },5000);
+}
+async function loadKingsmadeHero(){
+  try{
+    const response=await fetch("/api/hero-slides",{cache:"no-store"});
+    if(!response.ok)throw new Error("Hero slides unavailable");
+    const data=await response.json();
+    heroSlides=Array.isArray(data.slides)?data.slides.filter(s=>s&&s.is_active!==false):[];
+  }catch(error){
+    console.warn("KINGSMADE hero slider:",error);
+    heroSlides=[];
+  }
+  if(!heroSlides.length){
+    heroSlides=[{eyebrow:"CRAFT FOR KINGS",heading:"KINGSMADE",subtitle:"SIMPLE / CLEAN / TIMELESS",image_url:"",button_text:"START SHOPPING",button_url:"#shop",is_active:true}];
+  }
+  activeHeroSlide=0;
+  showHeroSlide(0);
+  startHeroRotation();
 }
 function initStorefrontControls() {
   const menuButton = document.querySelector(".menu-btn");
@@ -514,6 +571,12 @@ function initStorefrontControls() {
 
 /* ---------------- INITIALISE STORE ---------------- */
 initStorefrontControls();
+$("storeSearch")?.addEventListener("input",renderProducts);
+document.querySelectorAll(".category-tile[data-category]").forEach(tile=>tile.addEventListener("click",()=>{
+  selectedCategory=tile.dataset.category||"";
+  const search=$("storeSearch");if(search)search.value="";
+  renderProducts();
+}));
 renderCart();
 loadProducts();
 loadKingsmadeHero();
