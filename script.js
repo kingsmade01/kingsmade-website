@@ -458,16 +458,130 @@ function toggleCart(force) {
 
 /* ---------------- CHECKOUT ---------------- */
 
+let activeCheckoutStep = 1;
+
+function openCheckoutStep(step) {
+  activeCheckoutStep = Math.max(1, Math.min(3, Number(step) || 1));
+  document.querySelectorAll("[data-checkout-step]").forEach(panel => {
+    panel.hidden = Number(panel.dataset.checkoutStep) !== activeCheckoutStep;
+  });
+  document.querySelectorAll("[data-step-indicator]").forEach(item => {
+    const number = Number(item.dataset.stepIndicator);
+    item.classList.toggle("active", number === activeCheckoutStep);
+    item.classList.toggle("complete", number < activeCheckoutStep);
+    if (number === activeCheckoutStep) item.setAttribute("aria-current", "step");
+    else item.removeAttribute("aria-current");
+  });
+  if (activeCheckoutStep === 3) renderCheckoutReview();
+  $("checkoutTitle")?.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function renderCheckoutSummary() {
+  const list = $("checkoutSummaryItems");
+  if (!list) return;
+  list.replaceChildren();
+  cart.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "checkout-summary-item";
+    const details = document.createElement("div");
+    const name = document.createElement("b");
+    name.textContent = item.name;
+    const quantity = document.createElement("small");
+    quantity.textContent = "Quantity: " + item.qty;
+    details.append(name, quantity);
+    const price = document.createElement("strong");
+    price.textContent = naira(item.price * item.qty);
+    row.append(details, price);
+    list.appendChild(row);
+  });
+  const subtotal = cart.reduce((sum,item) => sum + item.price * item.qty, 0);
+  $("checkoutSubtotal").textContent = naira(subtotal);
+  $("checkoutGrandTotal").textContent = naira(subtotal);
+}
+
+function renderCheckoutReview() {
+  const target = $("checkoutReview");
+  const form = $("checkoutForm");
+  if (!target || !form) return;
+  target.replaceChildren();
+  const values = new FormData(form);
+  const groups = [
+    ["Customer", ["full_name","email","phone","whatsapp"]],
+    ["Delivery address", ["country","state","city","area","address_line1","building_number","address_line2","landmark","delivery_instructions"]],
+    ["Delivery preference", ["delivery_method"]]
+  ];
+  const labels = {
+    full_name:"Name",email:"Email",phone:"Phone",whatsapp:"WhatsApp",
+    country:"Country",state:"State / Region",city:"City",area:"Area",
+    address_line1:"Street address",building_number:"House / Building",
+    address_line2:"Apartment / Floor",landmark:"Landmark",
+    delivery_instructions:"Instructions",delivery_method:"Method"
+  };
+  groups.forEach(([heading, keys]) => {
+    const section = document.createElement("section");
+    section.className = "review-group";
+    const title = document.createElement("h3");
+    title.textContent = heading;
+    section.appendChild(title);
+    keys.forEach(key => {
+      const value = String(values.get(key) || "").trim();
+      if (!value) return;
+      const line = document.createElement("p");
+      const label = document.createElement("span");
+      label.textContent = labels[key] + ": ";
+      const content = document.createElement("b");
+      content.textContent = key === "delivery_method"
+        ? (value === "express" ? "Express delivery (subject to availability)" : "Standard delivery")
+        : value;
+      line.append(label, content);
+      section.appendChild(line);
+    });
+    target.appendChild(section);
+  });
+  renderCheckoutSummary();
+}
+
 function checkout() {
   if (!cart.length) {
     alert("Your cart is empty.");
     return;
   }
+  toggleCart(false);
+  document.body.classList.add("checkout-open");
+  $("checkoutPage").hidden = false;
+  renderCheckoutSummary();
+  openCheckoutStep(1);
+}
 
-  alert(
-    "KINGSMADE checkout is not connected yet. " +
-    "Your cart has been saved. Payment is not available yet."
-  );
+function closeCheckout() {
+  document.body.classList.remove("checkout-open");
+  $("checkoutPage").hidden = true;
+  openCheckoutStep(1);
+}
+
+function initCheckoutControls() {
+  $("returnToShop")?.addEventListener("click", event => {
+    event.preventDefault();
+    closeCheckout();
+    $("shop")?.scrollIntoView({behavior:"smooth"});
+  });
+  $("checkoutForm")?.addEventListener("click", event => {
+    const next = event.target.closest("[data-checkout-next]");
+    const back = event.target.closest("[data-checkout-back]");
+    if (next) {
+      if (activeCheckoutStep === 1) {
+        const form = $("checkoutForm");
+        const requiredFields = Array.from(form.querySelectorAll('[data-checkout-step="1"] [required]'));
+        const firstInvalid = requiredFields.find(field => !field.checkValidity());
+        if (firstInvalid) {
+          firstInvalid.reportValidity();
+          return;
+        }
+      }
+      openCheckoutStep(next.dataset.checkoutNext);
+    }
+    if (back) openCheckoutStep(back.dataset.checkoutBack);
+  });
 }
 
 /* ---------------- EDITABLE HERO SLIDER ---------------- */
@@ -663,6 +777,7 @@ async function loadStoreCategories() {
 
 /* ---------------- INITIALISE STORE ---------------- */
 initStorefrontControls();
+initCheckoutControls();
 $("storeSearch")?.addEventListener("input",renderProducts);
 loadStoreCategories();
 renderCart();
