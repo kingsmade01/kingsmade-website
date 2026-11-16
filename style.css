@@ -412,3 +412,13 @@ footer :is(h1,h2,h3,h4,h5,h6,p,li,label,small,strong,b,em,span,a){color:#f0d9b2!
 .checkout-page .checkout-summary{background:#fffdf8!important}
 .checkout-page .checkout-summary :is(h1,h2,h3,p,small,strong,b,span){color:#a98249!important}
 .checkout-page .checkout-info-note,.checkout-page .delivery-choice{background:#fffaf0!important}
+
+
+/* Footer finish — champagne gold footer copy and social icons */
+footer,.footer-reference,.footer-main{background:#10243d!important}
+footer :is(h1,h2,h3,h4,h5,h6,p,li,label,small,strong,b,em,span,a,div),
+.footer-reference :is(h1,h2,h3,h4,h5,h6,p,li,label,small,strong,b,em,span,a,div),
+.footer-main :is(h1,h2,h3,h4,h5,h6,p,li,label,small,strong,b,em,span,a,div),
+.footer-bottom :is(*),.footer-motto :is(*){color:#c6a36b!important}
+.footer-social a,.footer-social a svg,.footer-social a svg *{color:#c6a36b!important;fill:#c6a36b!important;stroke:#c6a36b!important}
+.footer-social a:hover,.footer-social a:hover svg,.footer-social a:hover svg *{color:#e0c18a!important;fill:#e0c18a!important;stroke:#e0c18a!important}
