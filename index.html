@@ -42,6 +42,57 @@
 <section class="collection section-wrap reference-products" id="shop"><div class="reference-section-heading"><span></span><h2>FEATURED PRODUCTS</h2><span></span></div><div id="products" class="grid"><p>Loading KINGSMADE collection...</p></div></section>
 
 </main>
+
+<section id="checkoutPage" class="checkout-page" hidden aria-labelledby="checkoutTitle">
+  <div class="checkout-topline"><a href="/" id="returnToShop">← CONTINUE SHOPPING</a><span> KINGSMADE PRIVATE CHECKOUT </span></div>
+  <div class="checkout-heading"><p class="checkout-kicker">A REFINED ORDER EXPERIENCE</p><h1 id="checkoutTitle">Complete your order</h1><p>Your details are used only to prepare and deliver your order.</p></div>
+  <div class="checkout-layout">
+    <div class="checkout-main">
+      <ol class="checkout-progress" aria-label="Checkout progress">
+        <li class="active" data-step-indicator="1"><span>01</span><b>Delivery details</b></li>
+        <li data-step-indicator="2"><span>02</span><b>Delivery method</b></li>
+        <li data-step-indicator="3"><span>03</span><b>Review</b></li>
+      </ol>
+      <form id="checkoutForm" novalidate>
+        <section class="checkout-step" data-checkout-step="1">
+          <div class="checkout-step-heading"><span>01</span><div><h2>Where should we deliver?</h2><p>Please provide accurate contact and address details.</p></div></div>
+          <div class="checkout-fields">
+            <label class="field full"><span>Full name *</span><input name="full_name" autocomplete="name" required maxlength="120" placeholder="Your full name"></label>
+            <label class="field"><span>Email address *</span><input name="email" type="email" autocomplete="email" required maxlength="160" placeholder="you@example.com"></label>
+            <label class="field"><span>Phone number *</span><input name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="+234"></label>
+            <label class="field full"><span>WhatsApp number <em>Optional</em></span><input name="whatsapp" type="tel" maxlength="30" placeholder="If different from your phone number"></label>
+            <label class="field"><span>Country *</span><input name="country" autocomplete="country-name" required maxlength="80" value="Nigeria"></label>
+            <label class="field"><span>State / Region *</span><input name="state" autocomplete="address-level1" required maxlength="100" placeholder="State or region"></label>
+            <label class="field"><span>City *</span><input name="city" autocomplete="address-level2" required maxlength="100" placeholder="City"></label>
+            <label class="field"><span>Area / Neighbourhood *</span><input name="area" required maxlength="120" placeholder="Area or neighbourhood"></label>
+            <label class="field full"><span>Street address *</span><input name="address_line1" autocomplete="address-line1" required maxlength="180" placeholder="Street name and address"></label>
+            <label class="field"><span>House / Building number *</span><input name="building_number" required maxlength="60" placeholder="House or building number"></label>
+            <label class="field"><span>Apartment / Floor <em>Optional</em></span><input name="address_line2" autocomplete="address-line2" maxlength="120" placeholder="Apartment, floor, unit"></label>
+            <label class="field full"><span>Nearby landmark <em>Optional</em></span><input name="landmark" maxlength="160" placeholder="A nearby landmark to help our delivery team"></label>
+            <label class="field full"><span>Delivery instructions <em>Optional</em></span><textarea name="delivery_instructions" rows="3" maxlength="500" placeholder="Any helpful delivery notes?"></textarea></label>
+          </div>
+          <div class="checkout-actions"><span class="checkout-secure-note">Your information is kept private.</span><button type="button" class="checkout-primary" data-checkout-next="2">CONTINUE TO DELIVERY</button></div>
+        </section>
+        <section class="checkout-step" data-checkout-step="2" hidden>
+          <div class="checkout-step-heading"><span>02</span><div><h2>Choose your delivery preference</h2><p>Final delivery availability and charges will be confirmed before payment.</p></div></div>
+          <div class="delivery-choice-list">
+            <label class="delivery-choice"><input type="radio" name="delivery_method" value="standard" checked><span><b>Standard delivery</b><small>Our regular delivery service. Timing and fee confirmed for your address.</small></span><strong>Fee to be confirmed</strong></label>
+            <label class="delivery-choice"><input type="radio" name="delivery_method" value="express"><span><b>Express delivery</b><small>Request priority delivery. Availability depends on your location.</small></span><strong>Fee to be confirmed</strong></label>
+          </div>
+          <p class="checkout-info-note">No delivery fee is being charged at this stage. We will confirm the applicable fee before payment is enabled.</p>
+          <div class="checkout-actions"><button type="button" class="checkout-secondary" data-checkout-back="1">BACK</button><button type="button" class="checkout-primary" data-checkout-next="3">REVIEW YOUR ORDER</button></div>
+        </section>
+        <section class="checkout-step" data-checkout-step="3" hidden>
+          <div class="checkout-step-heading"><span>03</span><div><h2>Review your order</h2><p>Check your items and delivery details before proceeding.</p></div></div>
+          <div id="checkoutReview" class="checkout-review"></div>
+          <div class="checkout-info-note payment-not-ready"><b>Payment is not active yet.</b><br>This checkout preview does not submit an order or collect payment. Order submission and verified payment will be connected and tested in the next stage.</div>
+          <div class="checkout-actions"><button type="button" class="checkout-secondary" data-checkout-back="2">BACK</button><button type="button" class="checkout-primary" disabled aria-disabled="true">PAYMENT NOT YET AVAILABLE</button></div>
+        </section>
+      </form>
+    </div>
+    <aside class="checkout-summary"><div class="summary-heading"><span>YOUR SELECTION</span><h2>Order summary</h2></div><div id="checkoutSummaryItems"></div><div class="summary-total"><span>Items subtotal</span><strong id="checkoutSubtotal">₦0</strong></div><div class="summary-delivery"><span>Delivery</span><strong>To be confirmed</strong></div><div class="summary-grand-total"><span>Estimated total before delivery</span><strong id="checkoutGrandTotal">₦0</strong></div><p>Final total will include the confirmed delivery fee.</p></aside>
+  </div>
+</section>
 <aside id="cart" class="cart-panel" aria-label="Shopping cart">
  <div class="cart-head"><div><small>YOUR SELECTION</small><h2>Shopping bag</h2></div><button type="button" aria-label="Close cart">×</button></div>
  <div id="cartItems"></div>
