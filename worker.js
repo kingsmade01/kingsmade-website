@@ -101,6 +101,49 @@ async function getHero(env) {
   }
 }
 
+/* ---------------- EDITABLE HERO SLIDES ---------------- */
+async function getHeroSlides(env) {
+  try {
+    await env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS km_site_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL)"
+    ).run();
+    const row = await env.DB.prepare(
+      "SELECT setting_value FROM km_site_settings WHERE setting_key='hero_slides' LIMIT 1"
+    ).first();
+    if (row?.setting_value) {
+      const slides = JSON.parse(row.setting_value);
+      if (Array.isArray(slides) && slides.length) return slides;
+    }
+    const legacy = await getHero(env);
+    return [{
+      id: "default",
+      eyebrow: "CRAFT FOR KINGS",
+      heading: "KINGSMADE",
+      subtitle: "SIMPLE / CLEAN / TIMELESS",
+      image_url: legacy.image_url || "",
+      button_text: legacy.button_text || "START SHOPPING",
+      button_url: legacy.button_url || "#shop",
+      is_active: true,
+      sort_order: 0
+    }];
+  } catch (error) {
+    if (/no such table/i.test(error.message || "")) {
+      return [{
+        id: "default",
+        eyebrow: "CRAFT FOR KINGS",
+        heading: "KINGSMADE",
+        subtitle: "SIMPLE / CLEAN / TIMELESS",
+        image_url: "",
+        button_text: "START SHOPPING",
+        button_url: "#shop",
+        is_active: true,
+        sort_order: 0
+      }];
+    }
+    throw error;
+  }
+}
+
 /* ---------------- MAIN WORKER ---------------- */
 
 export default {
@@ -127,6 +170,11 @@ export default {
         if (path === "/api/products") {
           const products = await getProducts(env);
           return json({ products });
+        }
+
+        if (path === "/api/hero-slides") {
+          const slides = await getHeroSlides(env);
+          return json({ slides });
         }
 
         if (path === "/api/hero") {
