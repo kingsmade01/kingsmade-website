@@ -306,3 +306,30 @@ img { max-width: 100%; }
 .summary-grand-total{border-top-color:#ded5c7!important}
 .summary-grand-total strong{color:#a17b43!important}
 .checkout-summary>p{color:#737d89!important}
+
+/* KINGSMADE storefront palette refresh — navy, light blue and ice blue */
+.reference-header .brand span{color:#eaf6fc!important}
+.reference-header .desktop-nav a{color:#d8edfa!important}
+.reference-header .desktop-nav a.active,.reference-header .desktop-nav a:hover{color:#a9dcf7!important;border-bottom-color:#a9dcf7!important}
+.reference-header .store-search{border-color:#6b9cbd!important}
+.reference-header .store-search span,.reference-header .bag-icon,.reference-header .menu-btn{color:#c7e6f8!important}
+.reference-header .bag-btn #cartCount{background:#a9dcf7!important;color:#071b33!important}
+.reference-hero .eyebrow,.reference-hero h1,.reference-hero .hero-signature span{color:#b9dff5!important}
+.reference-hero .hero-copy{color:#eaf6fc!important}
+.reference-hero .shop-btn{border-color:#a9dcf7!important;background:#a9dcf7!important;color:#071b33!important}
+.reference-hero .shop-btn:hover{background:#eaf6fc!important;color:#071b33!important}
+.hero-wave{border-top-color:#a9dcf7!important}
+.hero-dots button.active{background:#a9dcf7!important}
+.reference-categories,.reference-products{background:#071b33!important;color:#eaf6fc!important}
+.reference-section-heading span{background:#6faed4!important}
+.reference-section-heading h2{color:#d8edfa!important}
+.reference-categories .category-tile{border-color:#315a78!important;background:#102f50!important}
+.reference-categories .category-tile:after{background:#0b2542!important}
+.reference-categories .category-tile span{color:#eaf6fc!important}
+.reference-products .card{background:#102f50!important;border-color:#315a78!important}
+.reference-products .card-body h3,.reference-products .price{color:#eaf6fc!important}
+.reference-products .product-description,.reference-products .product-options,.reference-products .product-stock{color:#b9dff5!important}
+.reference-products .product-category{color:#a9dcf7!important}
+.reference-products .add{background:#a9dcf7!important;border-color:#a9dcf7!important;color:#071b33!important}
+.reference-products .add:hover{background:#eaf6fc!important;border-color:#eaf6fc!important}
+.mobile-nav{background:#0b2542!important;color:#eaf6fc!important}
