@@ -374,3 +374,41 @@ html,body{background:#fff!important;color:#10243d!important}
 .footer-main,.footer-reference{background:#10243d!important;color:#fff!important}
 .footer-main a,.footer-motto,.footer-reference .footer-brand>span{color:#f3dfbd!important}
 .footer-social a{border-color:#c6a36b!important;color:#f3dfbd!important}
+
+
+/* KINGSMADE final text treatment — champagne gold typography and warm-white surfaces */
+:root{--gold:#a98249;--ink:#a98249;--muted:#9a794b;--ivory:#fffdf8;--paper:#fffdf8;--line:#e8d9bf}
+html,body{background:#fffdf8!important;color:#a98249!important}
+body :is(h1,h2,h3,h4,h5,h6,p,li,label,small,strong,b,em,span,a,summary,dt,dd,figcaption){color:#a98249}
+body :is(button,input,textarea,select){color:#a98249}
+body :is(input,textarea,select){background-color:#fffdf8!important;border-color:#e4d3b5!important}
+body :is(input,textarea,select)::placeholder{color:#b69a70!important}
+.site-header,.reference-header,.mobile-nav,.section-wrap,.collection,.reference-categories,.reference-products,
+.card,.reference-products .card,.cart-panel,.checkout-page,.checkout-main,.checkout-summary,
+.category-tile,.product-img{background-color:#fffdf8!important}
+.reference-header .brand span,.brand span,.footer-brand>span,
+.reference-header .desktop-nav a,.desktop-nav a,.contact-link,.reference-header .bag-icon,
+.reference-header .menu-btn,.reference-section-heading h2,.reference-hero h1,
+.reference-hero .hero-signature span,.reference-hero .hero-copy,
+.reference-products .card-body h3,.reference-products .price,
+.card-body h3,.price,.category-page-intro h1{color:#a98249!important}
+.reference-hero .hero-shade{background:linear-gradient(90deg,rgba(255,253,248,.94) 0%,rgba(255,253,248,.82) 42%,rgba(255,253,248,.12) 100%)!important}
+.reference-hero .shop-btn,.reference-products .add,.add,.checkout-primary,.checkout,
+.shop-btn{background:#10243d!important;border:1px solid #c6a36b!important;color:#f0d9b2!important}
+.reference-hero .shop-btn:hover,.reference-products .add:hover,.add:hover,.checkout-primary:hover,.shop-btn:hover{background:#c6a36b!important;color:#10243d!important}
+.reference-categories .category-tile:after{background:linear-gradient(90deg,#10243d,#243a50)!important}
+.reference-categories .category-tile span{color:#f0d9b2!important}
+.reference-products .card,.card{border-color:#e4d3b5!important}
+.reference-products .product-category,.product-category,.category-page-intro>a{color:#a98249!important}
+.reference-products .product-description,.reference-products .product-options,.reference-products .product-stock,
+.product-description,.product-options,.product-stock,.category-page-intro p{color:#9a794b!important}
+footer,.footer-reference,.footer-main{background:#10243d!important}
+footer :is(h1,h2,h3,h4,h5,h6,p,li,label,small,strong,b,em,span,a){color:#f0d9b2!important}
+.footer-social a{color:#f0d9b2!important}
+.cart-panel :is(h1,h2,h3,p,small,strong,b,span,button,a){color:#a98249!important}
+.cart-panel .checkout{color:#f0d9b2!important}
+.checkout-page :is(h1,h2,h3,h4,p,li,label,small,strong,b,span,a){color:#a98249!important}
+.checkout-page .checkout-primary{color:#f0d9b2!important}
+.checkout-page .checkout-summary{background:#fffdf8!important}
+.checkout-page .checkout-summary :is(h1,h2,h3,p,small,strong,b,span){color:#a98249!important}
+.checkout-page .checkout-info-note,.checkout-page .delivery-choice{background:#fffaf0!important}
