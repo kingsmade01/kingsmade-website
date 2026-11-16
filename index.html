@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071b33">
+<meta name="theme-color" content="#f5f1e9">
 <meta name="description" content="KINGSMADE — Premium menswear. Style is a statement. Excellence is a standard.">
 <title>KINGSMADE | An Expression of Excellence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,107 +12,84 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="site-header reference-header">
-  <a class="brand" href="/" aria-label="KINGSMADE home"><span>KINGSMADE</span></a>
-  <nav class="desktop-nav" aria-label="Main navigation"><a class="active" href="/">Home</a><a href="#categories">Shop⌄</a><a href="#about">About</a><a href="#footer">Contact</a></nav>
-  <div class="header-actions"><label class="store-search"><input id="storeSearch" type="search" placeholder="Search products…" aria-label="Search products"><span>⌕</span></label>
-  <button class="bag-btn" type="button" aria-label="Open shopping bag"><span class="bag-icon">♧</span><span id="cartCount">0</span></button>
-  <button class="icon-btn menu-btn" type="button" aria-label="Open menu" aria-expanded="false">☰</button></div>
-</header><nav class="mobile-nav"><a href="/">Home</a><a href="#categories">Shop by category</a><a href="#about">About</a><a href="#footer">Contact</a></nav>
+<div class="announcement">COMPLIMENTARY STYLE. UNCOMPROMISING QUALITY. <span>CRAFT FOR KINGS</span></div>
+<header class="site-header">
+  <a class="brand" href="/" aria-label="KINGSMADE home"><span>KINGSMADE</span><small>EST. 2025</small></a>
+  <nav class="desktop-nav" aria-label="Main navigation">
+    <a href="#shop">NEW ARRIVALS</a><a href="#categories">CATEGORIES</a><a href="#shop">CLOTHING</a><a href="#shop">FOOTWEAR</a><a href="#footer">ABOUT</a>
+  </nav>
+  <div class="header-actions">
+    <a class="contact-link" href="mailto:kingsmade01@gmail.com">CONTACT KINGSMADE</a>
+    <button class="icon-btn menu-btn" type="button" aria-label="Open menu" onclick="document.body.classList.toggle('menu-open')">☰</button>
+    <button class="bag-btn" type="button" onclick="toggleCart()" aria-label="Open shopping bag">BAG <span id="cartCount">0</span></button>
+  </div>
+</header>
+<nav class="mobile-nav"><a href="#shop">Shop collection</a><a href="#categories">Categories</a><a href="mailto:kingsmade01@gmail.com">Contact</a></nav>
 <main>
-<section class="hero reference-hero" id="homepageHero" aria-label="KINGSMADE featured collection">
-<img id="heroBackground" class="hero-image" alt="" hidden><div class="hero-shade"></div>
-<div class="hero-content"><p class="eyebrow" id="heroEyebrow">CRAFT FOR KINGS</p><h1 id="heroHeading">KINGSMADE</h1><p class="hero-copy" id="heroSubtitle">SIMPLE / CLEAN / TIMELESS</p><a class="shop-btn" id="heroButton" href="#shop">START SHOPPING</a></div>
-<div class="hero-signature"><svg class="km-monogram" xmlns="http://www.w3.org/2000/svg" viewBox="200 250 1200 1100" role="img" aria-label="KINGSMADE KM monogram"><path fill="#c6a36b" fill-rule="evenodd" d="M 556 832 560 836 574 840 592 857 656 928 656 930 708 990 769 1057 800 1087 827 1105 859 1118 878 1122 900 1123 917 1121 942 1115 960 1107 964 1107 995 1092 976 1090 957 1084 935 1071 917 1056 892 1030 734 849 709 824 688 808 654 794 644 792 620 792 599 800 Z M 673 737 679 746 740 810 818 898 892 978 895 978 930 938 987 865 1000 851 1003 845 1078 757 1080 764 1080 1022 1078 1039 1074 1054 1061 1076 1044 1091 1017 1104 1021 1106 1258 1105 1257 1102 1243 1098 1225 1088 1211 1076 1199 1060 1189 1029 1187 991 1188 688 1190 673 1196 652 1203 640 1229 616 1248 607 1255 606 1259 603 1258 602 1104 602 1076 643 929 839 927 839 895 806 882 790 765 664 759 666 746 678 705 709 Z M 942 501 716 500 715 503 729 508 740 519 743 525 741 542 734 551 706 580 665 618 568 704 547 725 516 752 514 752 513 576 516 561 526 539 544 520 556 512 579 504 582 501 344 500 344 503 356 505 375 514 395 531 407 553 411 575 412 991 409 1028 399 1054 393 1062 376 1077 355 1088 346 1090 343 1093 582 1094 583 1092 581 1090 562 1084 540 1071 525 1054 516 1033 513 1019 513 833 580 780 636 732 654 719 868 539 896 519 914 510 940 503 Z"/></svg></div><div class="hero-wave hero-wave-left"></div><div class="hero-wave hero-wave-right"></div><div class="hero-dots" id="heroDots" aria-label="Choose hero slide"></div></section>
-
-<section class="categories section-wrap reference-categories" id="categories">
-<div class="reference-section-heading"><span></span><h2>SHOP BY CATEGORY</h2><span></span></div><div class="category-grid">
-<a class="category-tile" href="/category/men-s-clothing" data-category="Men's Clothing"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=85" alt="Men's clothing"><span>MEN'S<br>CLOTHING</span></a>
-<a class="category-tile" href="/category/shirts" data-category="Shirts"><img src="https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=85" alt="Shirts"><span>SHIRTS</span></a>
-<a class="category-tile" href="/category/trousers" data-category="Trousers"><img src="https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=700&q=85" alt="Trousers"><span>TROUSERS</span></a>
-<a class="category-tile" href="/category/traditional-wear" data-category="Traditional Wear"><img src="https://images.unsplash.com/photo-1592878904946-b3cd8ae243d0?auto=format&fit=crop&w=700&q=85" alt="Traditional wear"><span>TRADITIONAL<br>WEAR</span></a>
-<a class="category-tile" href="/category/fabrics" data-category="Fabrics"><img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=700&q=85" alt="Shadda yards and fabrics"><span>SHADDA, YARDS &<br>FABRICS</span></a>
-<a class="category-tile" href="/category/shoes" data-category="Shoes"><img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=85" alt="Shoes"><span>SHOES</span></a>
-<a class="category-tile" href="/category/watches" data-category="Watches"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=85" alt="Watches"><span>WATCHES</span></a>
-<a class="category-tile" href="/category/bracelets" data-category="Bracelets"><img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=700&q=85" alt="Bracelets"><span>BRACELETS</span></a>
-<a class="category-tile" href="/category/caps" data-category="Caps"><img src="https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=700&q=85" alt="Caps"><span>CAPS</span></a>
-<a class="category-tile" href="/category/bags-and-accessories" data-category="Bags & Accessories"><img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=700&q=85" alt="Bags and accessories"><span>BAGS &<br>ACCESSORIES</span></a>
-</div></section>
-<section class="collection section-wrap reference-products" id="shop"><div class="reference-section-heading"><span></span><h2>FEATURED PRODUCTS</h2><span></span></div><div id="products" class="grid"><p>Loading KINGSMADE collection...</p></div></section>
-
-</main>
-
-<section id="checkoutPage" class="checkout-page" hidden aria-labelledby="checkoutTitle">
-  <div class="checkout-topline"><a href="/" id="returnToShop">← CONTINUE SHOPPING</a><span> KINGSMADE PRIVATE CHECKOUT </span></div>
-  <div class="checkout-heading"><p class="checkout-kicker">A REFINED ORDER EXPERIENCE</p><h1 id="checkoutTitle">Complete your order</h1><p>Your details are used only to prepare and deliver your order.</p></div>
-  <div class="checkout-layout">
-    <div class="checkout-main">
-      <ol class="checkout-progress" aria-label="Checkout progress">
-        <li class="active" data-step-indicator="1"><span>01</span><b>Delivery details</b></li>
-        <li data-step-indicator="2"><span>02</span><b>Delivery method</b></li>
-        <li data-step-indicator="3"><span>03</span><b>Review</b></li>
-      </ol>
-      <form id="checkoutForm" novalidate>
-        <section class="checkout-step" data-checkout-step="1">
-          <div class="checkout-step-heading"><span>01</span><div><h2>Where should we deliver?</h2><p>Please provide accurate contact and address details.</p></div></div>
-          <div class="checkout-fields">
-            <label class="field full"><span>Full name *</span><input name="full_name" autocomplete="name" required maxlength="120" placeholder="Your full name"></label>
-            <label class="field"><span>Email address *</span><input name="email" type="email" autocomplete="email" required maxlength="160" placeholder="you@example.com"></label>
-            <label class="field"><span>Phone number *</span><input name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="+234"></label>
-            <label class="field full"><span>WhatsApp number <em>Optional</em></span><input name="whatsapp" type="tel" maxlength="30" placeholder="If different from your phone number"></label>
-            <label class="field"><span>Country *</span><input name="country" autocomplete="country-name" required maxlength="80" value="Nigeria"></label>
-            <label class="field"><span>State / Region *</span><input name="state" autocomplete="address-level1" required maxlength="100" placeholder="State or region"></label>
-            <label class="field"><span>City *</span><input name="city" autocomplete="address-level2" required maxlength="100" placeholder="City"></label>
-            <label class="field"><span>Area / Neighbourhood *</span><input name="area" required maxlength="120" placeholder="Area or neighbourhood"></label>
-            <label class="field full"><span>Street address *</span><input name="address_line1" autocomplete="address-line1" required maxlength="180" placeholder="Street name and address"></label>
-            <label class="field"><span>House / Building number *</span><input name="building_number" required maxlength="60" placeholder="House or building number"></label>
-            <label class="field"><span>Apartment / Floor <em>Optional</em></span><input name="address_line2" autocomplete="address-line2" maxlength="120" placeholder="Apartment, floor, unit"></label>
-            <label class="field full"><span>Nearby landmark <em>Optional</em></span><input name="landmark" maxlength="160" placeholder="A nearby landmark to help our delivery team"></label>
-            <label class="field full"><span>Delivery instructions <em>Optional</em></span><textarea name="delivery_instructions" rows="3" maxlength="500" placeholder="Any helpful delivery notes?"></textarea></label>
-          </div>
-          <div class="checkout-actions"><span class="checkout-secure-note">Your information is kept private.</span><button type="button" class="checkout-primary" data-checkout-next="2">CONTINUE TO DELIVERY</button></div>
-        </section>
-        <section class="checkout-step" data-checkout-step="2" hidden>
-          <div class="checkout-step-heading"><span>02</span><div><h2>Choose your delivery preference</h2><p>Final delivery availability and charges will be confirmed before payment.</p></div></div>
-          <div class="delivery-choice-list">
-            <label class="delivery-choice"><input type="radio" name="delivery_method" value="standard" checked><span><b>Standard delivery</b><small>Our regular delivery service. Timing and fee confirmed for your address.</small></span><strong>Fee to be confirmed</strong></label>
-            <label class="delivery-choice"><input type="radio" name="delivery_method" value="express"><span><b>Express delivery</b><small>Request priority delivery. Availability depends on your location.</small></span><strong>Fee to be confirmed</strong></label>
-          </div>
-          <p class="checkout-info-note">No delivery fee is being charged at this stage. We will confirm the applicable fee before payment is enabled.</p>
-          <div class="checkout-actions"><button type="button" class="checkout-secondary" data-checkout-back="1">BACK</button><button type="button" class="checkout-primary" data-checkout-next="3">REVIEW YOUR ORDER</button></div>
-        </section>
-        <section class="checkout-step" data-checkout-step="3" hidden>
-          <div class="checkout-step-heading"><span>03</span><div><h2>Review your order</h2><p>Check your items and delivery details before proceeding.</p></div></div>
-          <div id="checkoutReview" class="checkout-review"></div>
-          <div class="checkout-info-note payment-not-ready"><b>Payment is not active yet.</b><br>This checkout preview does not submit an order or collect payment. Order submission and verified payment will be connected and tested in the next stage.</div>
-          <div class="checkout-actions"><button type="button" class="checkout-secondary" data-checkout-back="2">BACK</button><button type="button" class="checkout-primary" disabled aria-disabled="true">PAYMENT NOT YET AVAILABLE</button></div>
-        </section>
-      </form>
-    </div>
-    <aside class="checkout-summary"><div class="summary-heading"><span>YOUR SELECTION</span><h2>Order summary</h2></div><div id="checkoutSummaryItems"></div><div class="summary-total"><span>Items subtotal</span><strong id="checkoutSubtotal">₦0</strong></div><div class="summary-delivery"><span>Delivery</span><strong>To be confirmed</strong></div><div class="summary-grand-total"><span>Estimated total before delivery</span><strong id="checkoutGrandTotal">₦0</strong></div><p>Final total will include the confirmed delivery fee.</p></aside>
+<section class="hero" id="homepageHero">
+  <img id="heroBackground" class="hero-image" alt="" hidden>
+  <div class="hero-shade"></div>
+  <div class="hero-content">
+    <p class="eyebrow" id="heroEyebrow">KINGSMADE · LUXURY MENSWEAR</p>
+    <h1 id="heroHeading">AN EXPRESSION<br>OF EXCELLENCE.</h1>
+    <p class="hero-copy" id="heroSubtitle">Style is a statement. Excellence is a standard.</p>
+    <a class="shop-btn" id="heroButton" href="#shop">DISCOVER THE COLLECTION <span>↗</span></a>
+  </div>
+  <div class="hero-signature"><span>KM</span><b>KINGSMADE</b><small>CRAFT FOR KINGS</small></div>
+  <div class="hero-index">01 <i></i> THE SIGNATURE COLLECTION</div>
+</section>
+<section class="intro-strip"><span>PREMIUM QUALITY</span><i>✳</i><span>TIMELESS STYLE</span><i>✳</i><span>MADE FOR KINGS</span></section>
+<section class="categories section-wrap" id="categories">
+  <div class="section-kicker">DISCOVER YOUR STYLE</div>
+  <div class="section-title-row"><h2>Find what fits<br><em>your standard.</em></h2><p>Considered essentials. Confident silhouettes.<br>Pieces made to become part of your signature.</p></div>
+  <div class="category-grid">
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=85" alt="T-shirts"><span>01 / T-SHIRTS</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=700&q=85" alt="Hoodies"><span>02 / HOODIES</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1517438476312-10d79c077509?auto=format&fit=crop&w=700&q=85" alt="Footwear"><span>03 / FOOTWEAR</span></a>
+    <a class="category-tile" href="#shop"><img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=700&q=85" alt="Accessories"><span>04 / ACCESSORIES</span></a>
   </div>
 </section>
+<section class="collection section-wrap" id="shop">
+  <div class="section-kicker">THE KINGSMADE COLLECTION</div>
+  <div class="section-title-row"><h2>Designed to be<br><em>remembered.</em></h2><p>Explore the collection.<br>Every detail has a purpose.</p></div>
+  <div id="products" class="grid"><p>Loading KINGSMADE collection...</p></div>
+</section>
+<section class="closing-banner"><div><p>THE KINGSMADE STANDARD</p><h2>Dress like<br><em>you mean it.</em></h2><a href="#shop">SHOP THE COLLECTION ↗</a></div></section>
+</main>
 <aside id="cart" class="cart-panel" aria-label="Shopping cart">
- <div class="cart-head"><div><small>YOUR SELECTION</small><h2>Shopping bag</h2></div><button type="button" aria-label="Close cart">×</button></div>
+ <div class="cart-head"><div><small>YOUR SELECTION</small><h2>Shopping bag</h2></div><button type="button" aria-label="Close cart" onclick="toggleCart(false)">×</button></div>
  <div id="cartItems"></div>
  <div class="cart-total"><span>Subtotal</span><strong id="cartTotal">₦0</strong></div>
- <button id="checkoutButton" class="checkout" type="button">PROCEED TO CHECKOUT</button>
+ <button class="checkout" type="button" onclick="checkout()">PROCEED TO CHECKOUT</button>
  <p class="cart-note">Secure checkout · Crafted for kings</p>
 </aside>
-<div id="overlay" class="overlay"></div>
-<footer id="footer"><div class="footer-reference"><div class="footer-brand"><span>KINGSMADE</span></div><div class="footer-motto"><b>CRAFT FOR KINGS.</b><small>SIMPLE / CLEAN / TIMELESS</small></div><div class="footer-social">
-<a class="social-icon instagram" href="https://www.instagram.com/kingsmadebrand/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle class="instagram-dot" cx="17.5" cy="6.5" r="1.15"/></svg></a>
-<a class="social-icon facebook" href="https://www.facebook.com/profile.php?id=61595227090232" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.4 21v-8.1h2.8l.42-3.16H13.4V7.72c0-.92.27-1.55 1.6-1.55h1.72V3.34c-.3-.04-1.35-.13-2.57-.13-2.55 0-4.3 1.56-4.3 4.43v2.09H7v3.16h2.85V21h3.55Z"/></svg></a>
-<a class="social-icon x-brand" href="https://x.com/kingsmadebrand/" target="_blank" rel="noopener noreferrer" aria-label="X">
-<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.77L23.2 22h-6.26l-4.9-7.38L5.6 22H2.45l7.27-8.32L1.9 2h6.42l4.43 6.75L18.9 2Zm-1.1 18h1.74L7.36 3.9H5.5L17.8 20Z"/></svg></a></div></div>
+<div id="overlay" class="overlay" onclick="toggleCart(false)"></div>
+<footer id="footer">
  <div class="footer-main"><div class="footer-brand"><span>KINGSMADE</span><small>CRAFT FOR KINGS</small><p>Premium menswear.<br>Made for those who set the standard.</p></div>
  <div><b>EXPLORE</b><a href="#shop">Shop all</a><a href="#categories">Categories</a><a href="#shop">New arrivals</a></div>
  <div><b>CLIENT CARE</b><a href="mailto:kingsmade01@gmail.com">Contact</a><a href="mailto:kingsmade01@gmail.com">Customer support</a></div>
- <div><b>FOLLOW KINGSMADE</b><a href="https://www.instagram.com/kingsmadebrand/" target="_blank" rel="noopener">Instagram</a><a href="https://x.com/kingsmadebrand/" target="_blank" rel="noopener">X</a><a href="https://www.facebook.com/profile.php?id=61595227090232" target="_blank" rel="noopener">Facebook</a></div></div>
+ <div><b>FOLLOW KINGSMADE</b><a href="https://www.instagram.com/kingsmade01/" target="_blank" rel="noopener">Instagram ↗</a><a href="https://x.com/kingsmadebrand/" target="_blank" rel="noopener">X ↗</a><a href="https://www.facebook.com/profile.php?id=61595227090232" target="_blank" rel="noopener">Facebook ↗</a></div></div>
  <div class="footer-bottom"><span>© 2026 KINGSMADE. ALL RIGHTS RESERVED.</span><span>EST. 2025 · CRAFT FOR KINGS</span></div>
 </footer>
 <script src="/script.js" defer></script>
-
+<script>
+async function loadKingsmadeHero(){
+ const hero=document.getElementById("homepageHero");
+ try{
+  const response=await fetch("/api/hero",{cache:"no-store"});
+  if(!response.ok)return;
+  const data=await response.json(),s=data.hero;
+  if(!s||typeof s!=="object")return;
+  hero.classList.toggle("is-hidden",s.is_visible!==undefined&&Number(s.is_visible)!==1);
+  if(s.heading)document.getElementById("heroHeading").textContent=s.heading;
+  if(s.subtitle)document.getElementById("heroSubtitle").textContent=s.subtitle;
+  const button=document.getElementById("heroButton");
+  button.textContent=(s.button_text||"DISCOVER THE COLLECTION")+" ↗";
+  button.href=s.button_url||"#shop";
+  const image=document.getElementById("heroBackground");
+  if(typeof s.image_url==="string"&&s.image_url.trim()){image.src=s.image_url;image.hidden=false;}
+ }catch(e){console.error("Hero settings:",e);}
+}
+loadKingsmadeHero();
+</script>
 </body></html>
