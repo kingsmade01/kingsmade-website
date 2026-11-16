@@ -333,3 +333,44 @@ img { max-width: 100%; }
 .reference-products .add{background:#a9dcf7!important;border-color:#a9dcf7!important;color:#071b33!important}
 .reference-products .add:hover{background:#eaf6fc!important;border-color:#eaf6fc!important}
 .mobile-nav{background:#0b2542!important;color:#eaf6fc!important}
+
+/* KINGSMADE luxury storefront — white, deep navy and champagne gold */
+:root{--ivory:#ffffff;--paper:#ffffff;--ink:#10243d;--muted:#687586;--gold:#c6a36b;--line:#e6dfd4;--white:#ffffff;--navy:#10243d}
+html,body{background:#fff!important;color:#10243d!important}
+.site-header,.reference-header{background:#fff!important;color:#10243d!important;border-bottom:1px solid #e8dfd1!important}
+.reference-header .brand span,.brand span,.footer-brand>span{color:#10243d!important}
+.brand small,.footer-brand small{color:#9b7846!important}
+.reference-header .desktop-nav a,.desktop-nav a,.contact-link{color:#10243d!important}
+.reference-header .desktop-nav a.active,.reference-header .desktop-nav a:hover,.desktop-nav a:hover{color:#a17b43!important;border-bottom-color:#c6a36b!important}
+.reference-header .store-search{border-color:#c6a36b!important}
+.reference-header .store-search input{color:#10243d!important}
+.reference-header .store-search input::placeholder{color:#89919b!important}
+.reference-header .store-search span,.reference-header .bag-icon,.reference-header .menu-btn{color:#10243d!important}
+.reference-header .bag-btn #cartCount{background:#c6a36b!important;color:#fff!important}
+.reference-hero{background-color:#fff!important}
+.reference-hero .hero-shade{background:linear-gradient(90deg,rgba(255,255,255,.94) 0%,rgba(255,255,255,.82) 42%,rgba(255,255,255,.12) 100%)!important}
+.reference-hero .eyebrow,.reference-hero h1,.reference-hero .hero-signature span{color:#10243d!important}
+.reference-hero .eyebrow{color:#a17b43!important}
+.reference-hero .hero-copy{color:#263b54!important}
+.reference-hero .shop-btn{background:#10243d!important;border:1px solid #c6a36b!important;color:#f3dfbd!important}
+.reference-hero .shop-btn:hover{background:#c6a36b!important;color:#10243d!important}
+.hero-wave{border-top-color:#c6a36b!important}
+.hero-dots button{background:#e6dfd4!important}
+.hero-dots button.active{background:#c6a36b!important}
+.reference-categories,.reference-products{background:#fff!important;color:#10243d!important}
+.reference-section-heading span{background:#c6a36b!important}
+.reference-section-heading h2{color:#10243d!important}
+.reference-categories .category-tile{background:#f8f6f2!important;border:1px solid #d8c5a5!important;box-shadow:0 3px 12px #10243d0d!important}
+.reference-categories .category-tile:after{background:linear-gradient(90deg,#10243d,#18314d)!important}
+.reference-categories .category-tile span{color:#f7ead5!important}
+.reference-products .card{background:#fff!important;border:1px solid #e5dac8!important;box-shadow:0 3px 12px #10243d0a!important}
+.reference-products .card-body h3,.reference-products .price{color:#10243d!important}
+.reference-products .product-description,.reference-products .product-options,.reference-products .product-stock{color:#687586!important}
+.reference-products .product-category{color:#a17b43!important}
+.reference-products .add{background:#10243d!important;border:1px solid #c6a36b!important;color:#f3dfbd!important}
+.reference-products .add:hover{background:#c6a36b!important;color:#10243d!important}
+.mobile-nav{background:#fff!important;color:#10243d!important;border-top:1px solid #e8dfd1!important}
+.mobile-nav a{border-color:#eee5d8!important}
+.footer-main,.footer-reference{background:#10243d!important;color:#fff!important}
+.footer-main a,.footer-motto,.footer-reference .footer-brand>span{color:#f3dfbd!important}
+.footer-social a{border-color:#c6a36b!important;color:#f3dfbd!important}
