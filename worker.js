@@ -554,8 +554,8 @@ var PAGE = String.raw(_a || (_a = __template([`<!doctype html>
 *{box-sizing:border-box}
 body{margin:0;position:relative;isolation:isolate;overflow-x:hidden;background:#07182d;color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
 body::before,body::after{content:"";position:fixed;inset:-28%;z-index:-1;pointer-events:none;will-change:transform,background-position;transform:translate3d(0,0,0)}
-body::before{opacity:.9;background:radial-gradient(ellipse at 18% 30%,rgba(200,173,120,.22) 0,rgba(200,173,120,.08) 13%,transparent 34%),radial-gradient(ellipse at 76% 68%,rgba(20,48,78,.95) 0,transparent 48%),radial-gradient(ellipse at 48% 48%,rgba(200,173,120,.10) 0,transparent 36%);filter:blur(34px);animation:kmGoldFlow 32s ease-in-out infinite alternate}
-body::after{opacity:.72;background:radial-gradient(ellipse at 72% 22%,rgba(200,173,120,.18) 0,transparent 25%),radial-gradient(ellipse at 28% 76%,rgba(9,34,59,.96) 0,transparent 42%),radial-gradient(ellipse at 55% 55%,rgba(200,173,120,.08) 0,transparent 32%);filter:blur(52px);animation:kmNavyFlow 42s ease-in-out infinite alternate}
+body::before{opacity:.95;background:linear-gradient(164deg,transparent 0 24%,rgba(200,173,120,.02) 27%,rgba(200,173,120,.72) 28%,rgba(255,225,166,.16) 29%,transparent 32% 100%),linear-gradient(158deg,transparent 0 39%,rgba(14,48,91,.05) 42%,rgba(25,92,160,.45) 44%,rgba(8,27,58,.92) 49%,transparent 55% 100%),radial-gradient(ellipse at 22% 70%,rgba(200,173,120,.15),transparent 35%);background-size:145% 145%;filter:blur(8px);animation:kmGoldFlow 28s ease-in-out infinite alternate}
+body::after{opacity:.82;background:linear-gradient(12deg,transparent 0 34%,rgba(200,173,120,.03) 38%,rgba(200,173,120,.55) 39%,rgba(255,224,160,.12) 40%,transparent 43% 100%),linear-gradient(12deg,transparent 0 50%,rgba(17,60,111,.08) 54%,rgba(24,87,157,.5) 57%,rgba(5,19,43,.95) 63%,transparent 68% 100%),radial-gradient(ellipse at 72% 28%,rgba(200,173,120,.13),transparent 35%);background-size:155% 155%;filter:blur(10px);animation:kmNavyFlow 38s ease-in-out infinite alternate}
 @keyframes kmGoldFlow{0%{transform:translate3d(-3%, -2%,0) rotate(-4deg) scale(1)}50%{transform:translate3d(2%,3%,0) rotate(2deg) scale(1.06)}100%{transform:translate3d(4%,-2%,0) rotate(6deg) scale(1.02)}}
 @keyframes kmNavyFlow{0%{transform:translate3d(3%,2%,0) rotate(5deg) scale(1.04)}50%{transform:translate3d(-2%,-3%,0) rotate(-3deg) scale(1)}100%{transform:translate3d(-4%,2%,0) rotate(-7deg) scale(1.08)}}
 @media(prefers-reduced-motion:reduce){body::before,body::after{animation:none;transform:none}}
@@ -579,16 +579,16 @@ button{cursor:pointer}
 .login-card .btn{width:100%;margin-top:12px;padding:12px}
 .error{color:#f09c96;font-size:12px;min-height:18px;margin-top:8px}
 .app{min-height:100vh}
-.sidebar{width:248px;position:fixed;inset:0 auto 0 0;background:#151513;border-right:1px solid var(--line);padding:25px 17px;display:flex;flex-direction:column;z-index:5}
+.sidebar{width:224px;position:fixed;inset:0 auto 0 0;background:linear-gradient(180deg,#030d20 0%,#07182d 100%);border-right:1px solid var(--line);padding:25px 17px;display:flex;flex-direction:column;z-index:5}
 .side-logo{font-family:Georgia,serif;font-size:21px;letter-spacing:.22em;text-align:center;padding:8px 0 5px}
 .side-caption{text-align:center;color:var(--gold);font-size:8px;letter-spacing:.2em;margin-bottom:35px}
 .nav-label{font-size:9px;letter-spacing:.18em;color:#77736b;margin:14px 10px 8px}
 .nav button{width:100%;border:0;background:transparent;color:#bdb8ad;text-align:left;padding:11px 12px;border-radius:8px;margin:2px 0;display:flex;align-items:center;gap:12px}
-.nav button:hover,.nav button.active{background:#29271f;color:var(--gold2)}
+.nav button:hover,.nav button.active{background:linear-gradient(100deg,#c8ad78,#f1d99f);color:#07182d;box-shadow:0 5px 18px #c8ad7840}
 .nav .ico{width:17px;text-align:center;color:var(--gold)}
 .side-bottom{margin-top:auto;border-top:1px solid var(--line);padding-top:15px}
 .side-user{color:var(--muted);font-size:11px;padding:8px 10px}
-.main{margin-left:248px;padding:27px 32px 60px;max-width:1800px}
+.main{margin-left:224px;padding:27px 32px 60px;max-width:1800px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:28px}
 .page-title{font-family:Georgia,serif;font-size:29px;font-weight:400;margin:0 0 5px}
 .page-sub{color:var(--muted);font-size:12px}
@@ -705,13 +705,20 @@ tr:last-child td{border-bottom:0}
       <div class="two-col">
         <div class="panel">
           <h3 class="panel-title">USD / NGN \xB7 Daily reference history</h3>
-          <div id="rateChart" class="chart-wrap"><div class="empty">Exchange-rate history will appear here.</div></div>
-          <div class="chart-labels"><span>Daily mid-market reference rate</span><span id="chartRange">Last 90 days</span></div>
+          <div id="rateChart" class="chart-wrap"><div class="empty">Paid sales history will appear here.</div></div>
+          <div class="chart-labels"><span>Verified paid-order revenue</span><span id="chartRange">Last 30 days</span></div>
         </div>
         <div class="panel">
-          <h3 class="panel-title">Financial position</h3>
+          <h3 class="panel-title">Profit breakdown</h3>
           <div id="financeSummary" class="muted">Loading financial summary\u2026</div>
-          <div class="notice">Profit is an estimate based on paid orders, recorded product costs and recorded expenses. It is not a substitute for reconciled accounts.</div>
+          <div class="notice">Profit is an estimate from verified paid orders, recorded item costs and expenses.</div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Hero section editor</h3>
+          <div class="muted" style="margin:8px 0 14px">Manage the storefront's first impression.</div>
+          <div id="heroQuickPreview" class="notice">No hero slides saved yet.</div>
+          <button class="btn" type="button" onclick="setPage('hero')">Open hero editor</button>
+          <button class="btn ghost" type="button" onclick="setPage('content')">Edit website text</button>
         </div>
       </div>
       <div class="panel" style="margin-top:16px">
