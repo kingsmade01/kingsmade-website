@@ -671,6 +671,13 @@ tr:last-child td{border-bottom:0}
       <button data-page="expenses"><span class="ico">\u2197</span>Expenses</button>
       <button data-page="exchange"><span class="ico">\u21C4</span>Exchange rate</button>
       <button data-page="analytics"><span class="ico">\u25A7</span>Analytics</button>
+      <button data-page="categories"><span class="ico">▦</span>Categories</button>
+      <button data-page="hero"><span class="ico">▣</span>Hero sections</button>
+      <button data-page="content"><span class="ico">✎</span>Website content</button>
+      <button data-page="media"><span class="ico">▧</span>Media library</button>
+      <button data-page="social"><span class="ico">◎</span>Social platforms</button>
+      <button data-page="appearance"><span class="ico">◈</span>Appearance</button>
+      <button data-page="checkout"><span class="ico">▤</span>Checkout editor</button>
     </nav>
     <div class="side-bottom">
       <div class="side-user">AUTHORIZED ADMINISTRATOR</div>
@@ -792,6 +799,99 @@ tr:last-child td{border-bottom:0}
       </div>
       <div class="notice">The FXAPI Free plan refreshes daily and supplies daily historical rates. This is not a live trading feed and does not provide OHLC candles on the Free plan. Product NGN equivalents are calculated from the saved daily reference rate.</div>
     </section>
+
+    <section class="section" id="page-categories">
+      <div class="section-head"><h2>Category manager</h2></div>
+      <div class="panel"><form id="categoryForm" class="form-grid">
+        <div class="field"><label>Category name</label><input id="catName" maxlength="120" required placeholder="e.g. Shirts"></div>
+        <div class="field"><label>URL slug</label><input id="catSlug" maxlength="140" required placeholder="shirts"></div>
+        <div class="field span2"><label>Description</label><textarea id="catDescription" rows="2"></textarea></div>
+        <div class="field span2"><label>Category cover image URL</label><input id="catImage" type="url" placeholder="https://..."></div>
+        <div class="field"><label>Sort order</label><input id="catOrder" type="number" value="0"></div>
+        <div class="field"><label>Parent category ID (optional)</label><input id="catParent" type="number" min="1"></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Create category</button></div>
+      </form></div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Your categories</h3><div id="categoriesTable"></div></div>
+    </section>
+    <section class="section" id="page-hero">
+      <div class="section-head"><h2>Hero section editor</h2></div>
+      <div class="panel"><form id="heroForm" class="form-grid">
+        <div class="field"><label>Main heading</label><input id="heroTitle" maxlength="180"></div>
+        <div class="field"><label>Subheading</label><input id="heroSubtitle" maxlength="300"></div>
+        <div class="field span2"><label>Supporting text</label><textarea id="heroBody" rows="3"></textarea></div>
+        <div class="field"><label>Desktop image URL</label><input id="heroImage" type="url"></div>
+        <div class="field"><label>Mobile image URL</label><input id="heroMobileImage" type="url"></div>
+        <div class="field"><label>Video URL</label><input id="heroVideo" type="url"></div>
+        <div class="field"><label>Button text</label><input id="heroButton" maxlength="100"></div>
+        <div class="field"><label>Button destination</label><input id="heroButtonUrl" type="url"></div>
+        <div class="field"><label>Display order</label><input id="heroOrder" type="number" value="0"></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Add hero slide</button></div>
+      </form></div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Existing slides</h3><div id="heroTable"></div></div>
+    </section>
+    <section class="section" id="page-content">
+      <div class="section-head"><h2>Website content studio</h2></div>
+      <div class="notice">Create editable content blocks for headings, descriptions, announcements, footer copy, navigation labels and other storefront text. Each block has a unique key so the storefront can request the exact content.</div>
+      <div class="panel"><form id="contentForm" class="form-grid">
+        <div class="field"><label>Content key</label><input id="contentKey" maxlength="140" required placeholder="home.hero.tagline"></div>
+        <div class="field"><label>Title / small heading</label><input id="contentTitle" maxlength="180"></div>
+        <div class="field span2"><label>Text / content</label><textarea id="contentBody" rows="4"></textarea></div>
+        <div class="field span2"><label>Optional settings JSON</label><textarea id="contentSettings" rows="2" placeholder='{"placement":"footer"}'></textarea></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Save content block</button></div>
+      </form></div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Saved content blocks</h3><div id="contentTable"></div></div>
+    </section>
+    <section class="section" id="page-media">
+      <div class="section-head"><h2>Media library</h2></div>
+      <div class="notice">Register HTTPS image and video assets here for reuse across the site. Direct file uploads and image transformations will be connected to the site's media storage in the next implementation stage.</div>
+      <div class="panel"><form id="mediaForm" class="form-grid">
+        <div class="field"><label>Asset title</label><input id="mediaTitle" maxlength="180"></div>
+        <div class="field"><label>Asset type</label><select id="mediaType"><option value="image">Image</option><option value="video">Video</option></select></div>
+        <div class="field span2"><label>HTTPS asset URL</label><input id="mediaUrl" type="url" required></div>
+        <div class="field span2"><label>Alt text / description</label><input id="mediaAlt" maxlength="300"></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Add to media library</button></div>
+      </form></div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Media assets</h3><div id="mediaTable"></div></div>
+    </section>
+    <section class="section" id="page-social">
+      <div class="section-head"><h2>Social platform manager</h2></div>
+      <div class="panel"><form id="socialForm" class="form-grid">
+        <div class="field"><label>Platform</label><input id="socialPlatform" maxlength="60" required placeholder="Instagram"></div>
+        <div class="field"><label>Display label</label><input id="socialLabel" maxlength="100"></div>
+        <div class="field span2"><label>Profile URL (HTTPS)</label><input id="socialUrl" type="url" required></div>
+        <div class="field"><label>Icon key</label><input id="socialIcon" maxlength="60" placeholder="instagram"></div>
+        <div class="field"><label>Display order</label><input id="socialOrder" type="number" value="0"></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Add platform</button></div>
+      </form></div>
+      <div class="panel" style="margin-top:16px"><h3 class="panel-title">Connected social links</h3><div id="socialTable"></div></div>
+    </section>
+    <section class="section" id="page-appearance">
+      <div class="section-head"><h2>Appearance controls</h2></div>
+      <div class="notice">Storefront appearance settings are saved independently from payment and order logic. Use design tokens to control brand colours, typography and layout values.</div>
+      <div class="panel"><form id="appearanceForm" class="form-grid">
+        <div class="field"><label>Primary brand colour</label><input id="appearancePrimary" value="#07182d"></div>
+        <div class="field"><label>Accent colour</label><input id="appearanceAccent" value="#c8ad78"></div>
+        <div class="field"><label>Base surface colour</label><input id="appearanceSurface" value="#f5f1e8"></div>
+        <div class="field"><label>Primary text colour</label><input id="appearanceText" value="#07182d"></div>
+        <div class="field"><label>Heading font</label><input id="appearanceHeading" value="Georgia"></div>
+        <div class="field"><label>Body font</label><input id="appearanceBody" value="Inter"></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Save appearance settings</button></div>
+      </form></div>
+    </section>
+    <section class="section" id="page-checkout">
+      <div class="section-head"><h2>Checkout experience editor</h2></div>
+      <div class="notice">This area controls checkout presentation and customer-facing copy. Payment verification, Paystack secrets, order totals and stock deduction remain protected system logic and cannot be overwritten by visual settings.</div>
+      <div class="panel"><form id="checkoutForm" class="form-grid">
+        <div class="field"><label>Checkout page heading</label><input id="checkoutHeading" value="Complete your order"></div>
+        <div class="field"><label>Checkout intro text</label><input id="checkoutIntro" value="Your next favourite piece is almost yours."></div>
+        <div class="field"><label>Order summary heading</label><input id="checkoutSummary" value="Order summary"></div>
+        <div class="field"><label>Place order button text</label><input id="checkoutButton" value="Continue to payment"></div>
+        <div class="field"><label>Delivery section heading</label><input id="checkoutDelivery" value="Delivery details"></div>
+        <div class="field"><label>Contact section heading</label><input id="checkoutContact" value="Contact information"></div>
+        <div class="field span2"><label>Checkout reassurance / footer text</label><textarea id="checkoutFooter" rows="3"></textarea></div>
+        <div class="span2 form-actions"><button class="btn" type="submit">Save checkout content</button></div>
+      </form></div>
+    </section>
   </main>
 </div>
 
@@ -801,6 +901,7 @@ tr:last-child td{border-bottom:0}
 <script>
 const $=id=>document.getElementById(id);
 let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,page:'overview'};
+let cmsState={categories:[],heroes:[],content:[],socials:[],media:[],settings:[]};
 let seenOrderIds=new Set();
 let orderPollingReady=false;
 
@@ -890,7 +991,7 @@ function setPage(page){
     expenses:'Expenses',
     exchange:'Exchange rate',
     inventory:'Inventory control',
-    analytics:'Business analytics'
+    analytics:'Business analytics',categories:'Categories',hero:'Hero section editor',content:'Website content',media:'Media library',social:'Social platforms',appearance:'Appearance',checkout:'Checkout editor'
   })[page]||'Overview';
 
   $('sidebar').classList.remove('open');
@@ -903,6 +1004,7 @@ function setPage(page){
   if(page==='exchange')renderExchange();
   if(page==='inventory')renderInventory();
   if(page==='analytics')renderAnalytics();
+  if(page==='categories'||page==='hero'||page==='content'||page==='media'||page==='social'||page==='appearance'||page==='checkout')renderCmsPage(page);
 }
 
 function table(headers,rows){
@@ -938,6 +1040,7 @@ async function loadAll(){
     state.complaints=co.complaints||[];
     state.fx=fx;
     state.inventory=inv||{products:[],movements:[]};
+    try{cmsState=await api('/api/cms')}catch{}
 
     renderOverview();
     renderProducts();
@@ -1444,6 +1547,29 @@ async function refreshFx(){
   }
 }
 
+
+function cmsRows(headers,rows){return table(headers,rows);}
+async function cmsRefresh(){cmsState=await api('/api/cms');renderCmsPage(state.page);}
+async function cmsDelete(path,label){if(!confirm('Delete this '+label+'?'))return;try{await api(path,{method:'DELETE'});await cmsRefresh();toast(label+' deleted.');}catch(e){toast(e.message);}}
+function renderCmsPage(page){
+  if(page==='categories')$('categoriesTable').innerHTML=cmsRows(['CATEGORY','SLUG','PARENT','ORDER','STATUS','ACTION'],cmsState.categories.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.slug)+'</td><td>'+esc(c.parent_id||'—')+'</td><td>'+c.sort_order+'</td><td>'+statusBadge(c.is_active?'active':'inactive')+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/categories/'+c.id+'\',\'category\')">Delete</button></td></tr>'));
+  if(page==='hero')$('heroTable').innerHTML=cmsRows(['SLIDE','IMAGE / VIDEO','ORDER','STATUS','ACTION'],cmsState.heroes.map(h=>'<tr><td>'+esc(h.title||h.subtitle||'Untitled slide')+'</td><td>'+esc(h.image_url||h.video_url||'—')+'</td><td>'+h.sort_order+'</td><td>'+statusBadge(h.is_active?'active':'inactive')+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/hero/'+h.id+'\',\'hero slide\')">Delete</button></td></tr>'));
+  if(page==='content')$('contentTable').innerHTML=cmsRows(['KEY','TITLE','TEXT','UPDATED'],cmsState.content.map(c=>'<tr><td>'+esc(c.block_key)+'</td><td>'+esc(c.title)+'</td><td>'+esc(c.body_text)+'</td><td>'+esc(c.updated_at)+'</td></tr>'));
+  if(page==='media')$('mediaTable').innerHTML=cmsRows(['TITLE','TYPE','URL','ALT TEXT','ACTION'],cmsState.media.map(m=>'<tr><td>'+esc(m.title)+'</td><td>'+esc(m.asset_type)+'</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">'+esc(m.asset_url)+'</td><td>'+esc(m.alt_text)+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/media/'+m.id+'\',\'media asset\')">Delete</button></td></tr>'));
+  if(page==='social')$('socialTable').innerHTML=cmsRows(['PLATFORM','LABEL','URL','ICON','STATUS','ACTION'],cmsState.socials.map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.url)+'</td><td>'+esc(x.icon_key)+'</td><td>'+statusBadge(x.is_active?'active':'inactive')+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/social/'+x.id+'\',\'social link\')">Delete</button></td></tr>'));
+  if(page==='appearance'||page==='checkout'){
+    const m=new Map((cmsState.settings||[]).map(x=>[x.setting_key,x.setting_value]));
+    const map=page==='appearance'?{appearancePrimary:'appearance.primary',appearanceAccent:'appearance.accent',appearanceSurface:'appearance.surface',appearanceText:'appearance.text',appearanceHeading:'appearance.heading_font',appearanceBody:'appearance.body_font'}:{checkoutHeading:'checkout.heading',checkoutIntro:'checkout.intro',checkoutSummary:'checkout.summary_heading',checkoutButton:'checkout.button_text',checkoutDelivery:'checkout.delivery_heading',checkoutContact:'checkout.contact_heading',checkoutFooter:'checkout.footer'};
+    for(const [id,key] of Object.entries(map)){const el=$(id);if(el&&m.has(key))el.value=m.get(key);}
+  }
+}
+$('categoryForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/categories',{method:'POST',body:JSON.stringify({name:$('catName').value,slug:$('catSlug').value,description:$('catDescription').value,cover_image_url:$('catImage').value,sort_order:Number($('catOrder').value),parent_id:$('catParent').value||null})});e.target.reset();await cmsRefresh();toast('Category created.');}catch(x){toast(x.message);}});
+$('heroForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/hero',{method:'POST',body:JSON.stringify({title:$('heroTitle').value,subtitle:$('heroSubtitle').value,body_text:$('heroBody').value,image_url:$('heroImage').value,mobile_image_url:$('heroMobileImage').value,video_url:$('heroVideo').value,button_text:$('heroButton').value,button_url:$('heroButtonUrl').value,sort_order:Number($('heroOrder').value)})});e.target.reset();await cmsRefresh();toast('Hero slide added.');}catch(x){toast(x.message);}});
+$('contentForm').addEventListener('submit',async e=>{e.preventDefault();let settings={};try{settings=JSON.parse($('contentSettings').value||'{}')}catch{toast('Settings must be valid JSON.');return;}try{await api('/api/content',{method:'POST',body:JSON.stringify({block_key:$('contentKey').value,title:$('contentTitle').value,body_text:$('contentBody').value,settings_json:settings})});e.target.reset();await cmsRefresh();toast('Content block saved.');}catch(x){toast(x.message);}});
+$('mediaForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/media',{method:'POST',body:JSON.stringify({title:$('mediaTitle').value,asset_type:$('mediaType').value,asset_url:$('mediaUrl').value,alt_text:$('mediaAlt').value})});e.target.reset();await cmsRefresh();toast('Media asset added.');}catch(x){toast(x.message);}});
+$('socialForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/social',{method:'POST',body:JSON.stringify({platform:$('socialPlatform').value,label:$('socialLabel').value,url:$('socialUrl').value,icon_key:$('socialIcon').value,sort_order:Number($('socialOrder').value)})});e.target.reset();await cmsRefresh();toast('Social platform added.');}catch(x){toast(x.message);}});
+$('appearanceForm').addEventListener('submit',async e=>{e.preventDefault();const v={};for(const [id,key] of Object.entries({appearancePrimary:'appearance.primary',appearanceAccent:'appearance.accent',appearanceSurface:'appearance.surface',appearanceText:'appearance.text',appearanceHeading:'appearance.heading_font',appearanceBody:'appearance.body_font'}))v[key]=$(id).value;try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify(v)});await cmsRefresh();toast('Appearance settings saved.');}catch(x){toast(x.message);}});
+$('checkoutForm').addEventListener('submit',async e=>{e.preventDefault();const v={};for(const [id,key] of Object.entries({checkoutHeading:'checkout.heading',checkoutIntro:'checkout.intro',checkoutSummary:'checkout.summary_heading',checkoutButton:'checkout.button_text',checkoutDelivery:'checkout.delivery_heading',checkoutContact:'checkout.contact_heading',checkoutFooter:'checkout.footer'}))v[key]=$(id).value;try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify(v)});await cmsRefresh();toast('Checkout content saved.');}catch(x){toast(x.message);}});
 $('loginBtn').addEventListener('click',login);
 $('loginPassword').addEventListener('keydown',e=>{
   if(e.key==='Enter')login();
