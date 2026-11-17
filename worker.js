@@ -535,9 +535,17 @@ var PAGE = String.raw(_a || (_a = __template([`<!doctype html>
 <style>
 :root{--bg:#07182d;--panel:#0d2340;--panel2:#142d4c;--line:#29435f;--gold:#c8ad78;--gold2:#e0c99b;--ivory:#f4f0e8;--muted:#b7c5d6;--green:#78b99a;--red:#d77d78;--radius:15px}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(ellipse at 18% 12%,#17385a 0,transparent 42%),radial-gradient(ellipse at 84% 82%,#102b49 0,transparent 46%),var(--bg);background-size:150% 150%;animation:kmAtmosphere 28s ease-in-out infinite alternate;color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
-@keyframes kmAtmosphere{from{background-position:0% 0%,100% 100%,0 0}to{background-position:35% 22%,65% 78%,0 0}}
-@media(prefers-reduced-motion:reduce){body{animation:none}}
+body{margin:0;position:relative;isolation:isolate;overflow-x:hidden;background:#06152b;color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
+body:before{content:"";position:fixed;inset:-35%;z-index:-1;pointer-events:none;background:
+radial-gradient(ellipse at 18% 25%,rgba(198,157,87,.22),transparent 26%),
+radial-gradient(ellipse at 78% 70%,rgba(198,157,87,.17),transparent 30%),
+linear-gradient(124deg,transparent 35%,rgba(221,187,125,.05) 43%,rgba(237,207,153,.32) 46%,rgba(176,129,64,.10) 49%,transparent 57%),
+linear-gradient(156deg,transparent 42%,rgba(210,173,111,.04) 48%,rgba(232,198,139,.22) 51%,rgba(170,127,71,.08) 54%,transparent 62%);
+filter:blur(18px);opacity:.95;animation:kmGoldFlow 24s ease-in-out infinite alternate}
+body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:radial-gradient(circle,rgba(235,205,151,.48) 1px,transparent 1.8px),radial-gradient(circle,rgba(197,157,91,.35) 1px,transparent 2px);background-size:170px 170px,260px 260px;background-position:0 0,70px 90px;opacity:.24;animation:kmGoldParticles 38s linear infinite}
+@keyframes kmGoldFlow{0%{transform:translate3d(-3%,1%,0) rotate(-3deg) scale(1)}50%{transform:translate3d(2%,-2%,0) rotate(1deg) scale(1.05)}100%{transform:translate3d(4%,2%,0) rotate(4deg) scale(1.02)}}
+@keyframes kmGoldParticles{from{background-position:0 0,70px 90px}to{background-position:170px -170px,-190px 350px}}
+@media(prefers-reduced-motion:reduce){body:before,body:after{animation:none}}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
