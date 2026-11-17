@@ -971,7 +971,6 @@ async function login(){
       method:'POST',
       body:JSON.stringify({password:$('loginPassword').value})
     });
-    await api('/api/me');
     $('loginPassword').value='';
     showApp();
     await loadAll();
