@@ -470,9 +470,13 @@ var PAGE = String.raw(_a || (_a = __template([`<!doctype html>
 <style>
 :root{--bg:#07182d;--panel:#0d2340;--panel2:#142d4c;--line:#29435f;--gold:#c8ad78;--gold2:#e0c99b;--ivory:#f4f0e8;--muted:#b7c5d6;--green:#78b99a;--red:#d77d78;--radius:15px}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(ellipse at 18% 12%,#17385a 0,transparent 42%),radial-gradient(ellipse at 84% 82%,#102b49 0,transparent 46%),var(--bg);background-size:150% 150%;animation:kmAtmosphere 28s ease-in-out infinite alternate;color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
-@keyframes kmAtmosphere{from{background-position:0% 0%,100% 100%,0 0}to{background-position:35% 22%,65% 78%,0 0}}
-@media(prefers-reduced-motion:reduce){body{animation:none}}
+body{margin:0;position:relative;isolation:isolate;overflow-x:hidden;background:#07182d;color:var(--ivory);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
+body::before,body::after{content:"";position:fixed;inset:-28%;z-index:-1;pointer-events:none;will-change:transform,background-position;transform:translate3d(0,0,0)}
+body::before{opacity:.9;background:radial-gradient(ellipse at 18% 30%,rgba(200,173,120,.22) 0,rgba(200,173,120,.08) 13%,transparent 34%),radial-gradient(ellipse at 76% 68%,rgba(20,48,78,.95) 0,transparent 48%),radial-gradient(ellipse at 48% 48%,rgba(200,173,120,.10) 0,transparent 36%);filter:blur(34px);animation:kmGoldFlow 32s ease-in-out infinite alternate}
+body::after{opacity:.72;background:radial-gradient(ellipse at 72% 22%,rgba(200,173,120,.18) 0,transparent 25%),radial-gradient(ellipse at 28% 76%,rgba(9,34,59,.96) 0,transparent 42%),radial-gradient(ellipse at 55% 55%,rgba(200,173,120,.08) 0,transparent 32%);filter:blur(52px);animation:kmNavyFlow 42s ease-in-out infinite alternate}
+@keyframes kmGoldFlow{0%{transform:translate3d(-3%, -2%,0) rotate(-4deg) scale(1)}50%{transform:translate3d(2%,3%,0) rotate(2deg) scale(1.06)}100%{transform:translate3d(4%,-2%,0) rotate(6deg) scale(1.02)}}
+@keyframes kmNavyFlow{0%{transform:translate3d(3%,2%,0) rotate(5deg) scale(1.04)}50%{transform:translate3d(-2%,-3%,0) rotate(-3deg) scale(1)}100%{transform:translate3d(-4%,2%,0) rotate(-7deg) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){body::before,body::after{animation:none;transform:none}}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
