@@ -982,6 +982,9 @@ async function login(){
   }
 }
 
+// Bind the sign-in control immediately, before optional dashboard listeners.
+// Login listeners are attached directly after the login function above.
+
 async function logout(){
   try{
     await api('/api/logout',{method:'POST',body:'{}'});
