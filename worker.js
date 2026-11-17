@@ -983,7 +983,11 @@ async function login(){
 }
 
 // Bind the sign-in control immediately, before optional dashboard listeners.
-// Login listeners are attached directly after the login function above.
+// Bind sign-in immediately, before any optional dashboard listeners.
+$('loginBtn').addEventListener('click',login);
+$('loginPassword').addEventListener('keydown',e=>{
+  if(e.key==='Enter')login();
+});
 
 async function logout(){
   try{
@@ -1590,10 +1594,7 @@ $('mediaForm').addEventListener('submit',async e=>{e.preventDefault();try{await 
 $('socialForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/social',{method:'POST',body:JSON.stringify({platform:$('socialPlatform').value,label:$('socialLabel').value,url:$('socialUrl').value,icon_key:$('socialIcon').value,sort_order:Number($('socialOrder').value)})});e.target.reset();await cmsRefresh();toast('Social platform added.');}catch(x){toast(x.message);}});
 $('appearanceForm').addEventListener('submit',async e=>{e.preventDefault();const v={};for(const [id,key] of Object.entries({appearancePrimary:'appearance.primary',appearanceAccent:'appearance.accent',appearanceSurface:'appearance.surface',appearanceText:'appearance.text',appearanceHeading:'appearance.heading_font',appearanceBody:'appearance.body_font'}))v[key]=$(id).value;try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify(v)});await cmsRefresh();toast('Appearance settings saved.');}catch(x){toast(x.message);}});
 $('checkoutForm').addEventListener('submit',async e=>{e.preventDefault();const v={};for(const [id,key] of Object.entries({checkoutHeading:'checkout.heading',checkoutIntro:'checkout.intro',checkoutSummary:'checkout.summary_heading',checkoutButton:'checkout.button_text',checkoutDelivery:'checkout.delivery_heading',checkoutContact:'checkout.contact_heading',checkoutFooter:'checkout.footer'}))v[key]=$(id).value;try{await api('/api/site-settings',{method:'PUT',body:JSON.stringify(v)});await cmsRefresh();toast('Checkout content saved.');}catch(x){toast(x.message);}});
-$('loginBtn').addEventListener('click',login);
-$('loginPassword').addEventListener('keydown',e=>{
-  if(e.key==='Enter')login();
-});
+// Login listeners are bound immediately after login() above.
 $('logoutBtn').addEventListener('click',logout);
 $('refreshBtn').addEventListener('click',loadAll);
 $('menuBtn').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
