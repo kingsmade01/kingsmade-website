@@ -962,7 +962,7 @@ function showApp(){
   $('appView').classList.remove('hidden');
 }
 
-async function login(){
+async async function login(){
   $('loginError').textContent='';
   $('loginBtn').disabled=true;
 
