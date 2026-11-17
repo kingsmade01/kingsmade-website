@@ -456,6 +456,87 @@ async function api(request, env, url) {
     ).bind(status, Number(complaintMatch[1])).run();
     return json({ ok: true });
   }
+
+  // KINGSMADE CMS APIs — admin session is required by the Worker router.
+  if (path === "/api/cms" && method === "GET") {
+    const [categories, heroes, content, socials, media, settings] = await Promise.all([
+      env.DB.prepare("SELECT * FROM km_categories ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT * FROM km_hero_sections ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT * FROM km_content_blocks ORDER BY block_key").all(),
+      env.DB.prepare("SELECT * FROM km_social_links ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT * FROM km_media_assets ORDER BY id DESC LIMIT 300").all(),
+      env.DB.prepare("SELECT setting_key,setting_value,updated_at FROM km_site_settings ORDER BY setting_key").all()
+    ]);
+    return json({categories:categories.results||[],heroes:heroes.results||[],content:content.results||[],socials:socials.results||[],media:media.results||[],settings:settings.results||[]});
+  }
+  if (path === "/api/categories" && method === "GET") {
+    const r=await env.DB.prepare("SELECT * FROM km_categories ORDER BY sort_order,id").all();
+    return json({categories:r.results||[]});
+  }
+  if (path === "/api/categories" && method === "POST") {
+    const b=await bodyJSON(request),name=cleanText(b.name,120),slug=cleanText(b.slug,140).toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-|-$/g,"");
+    if(!name||!slug)return json({error:"Category name and URL slug are required."},400);
+    const r=await env.DB.prepare("INSERT INTO km_categories(parent_id,name,slug,description,cover_image_url,sort_order,is_active) VALUES(?,?,?,?,?,?,?)").bind(b.parent_id?Number(b.parent_id):null,name,slug,cleanText(b.description,1000),cleanText(b.cover_image_url,2000),Number(b.sort_order)||0,b.is_active===false?0:1).run();
+    return json({ok:true,id:r.meta?.last_row_id});
+  }
+  const categoryMatch=path.match(/^\/api\/categories\/(\d+)$/);
+  if(categoryMatch&&method==="PATCH"){
+    const b=await bodyJSON(request),id=Number(categoryMatch[1]);
+    const current=await env.DB.prepare("SELECT * FROM km_categories WHERE id=?").bind(id).first();
+    if(!current)return json({error:"Category not found."},404);
+    const name=b.name===undefined?current.name:cleanText(b.name,120);
+    const slug=b.slug===undefined?current.slug:cleanText(b.slug,140).toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-|-$/g,"");
+    await env.DB.prepare("UPDATE km_categories SET parent_id=?,name=?,slug=?,description=?,cover_image_url=?,sort_order=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(b.parent_id===undefined?current.parent_id:(b.parent_id?Number(b.parent_id):null),name,slug,b.description===undefined?current.description:cleanText(b.description,1000),b.cover_image_url===undefined?current.cover_image_url:cleanText(b.cover_image_url,2000),b.sort_order===undefined?current.sort_order:Number(b.sort_order)||0,b.is_active===undefined?current.is_active:(b.is_active?1:0),id).run();
+    return json({ok:true});
+  }
+  if(categoryMatch&&method==="DELETE"){await env.DB.prepare("DELETE FROM km_categories WHERE id=?").bind(Number(categoryMatch[1])).run();return json({ok:true});}
+  if(path==="/api/hero"&&method==="GET"){const r=await env.DB.prepare("SELECT * FROM km_hero_sections ORDER BY sort_order,id").all();return json({heroes:r.results||[]});}
+  if(path==="/api/hero"&&method==="POST"){
+    const b=await bodyJSON(request);const r=await env.DB.prepare("INSERT INTO km_hero_sections(title,subtitle,body_text,image_url,mobile_image_url,video_url,button_text,button_url,sort_order,is_active) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(cleanText(b.title,180),cleanText(b.subtitle,300),cleanText(b.body_text,3000),cleanText(b.image_url,2000),cleanText(b.mobile_image_url,2000),cleanText(b.video_url,2000),cleanText(b.button_text,100),cleanText(b.button_url,1000),Number(b.sort_order)||0,b.is_active===false?0:1).run();return json({ok:true,id:r.meta?.last_row_id});
+  }
+  const heroMatch=path.match(/^\/api\/hero\/(\d+)$/);
+  if(heroMatch&&method==="PATCH"){
+    const b=await bodyJSON(request),id=Number(heroMatch[1]),cur=await env.DB.prepare("SELECT * FROM km_hero_sections WHERE id=?").bind(id).first();if(!cur)return json({error:"Hero slide not found."},404);
+    const fields=["title","subtitle","body_text","image_url","mobile_image_url","video_url","button_text","button_url","sort_order","is_active"];
+    const values=fields.map(k=>b[k]===undefined?cur[k]:(k==="sort_order"?Number(b[k])||0:k==="is_active"?(b[k]?1:0):cleanText(b[k],k==="body_text"?3000:2000)));
+    await env.DB.prepare("UPDATE km_hero_sections SET title=?,subtitle=?,body_text=?,image_url=?,mobile_image_url=?,video_url=?,button_text=?,button_url=?,sort_order=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(...values,id).run();return json({ok:true});
+  }
+  if(heroMatch&&method==="DELETE"){await env.DB.prepare("DELETE FROM km_hero_sections WHERE id=?").bind(Number(heroMatch[1])).run();return json({ok:true});}
+  if(path==="/api/content"&&method==="GET"){const r=await env.DB.prepare("SELECT * FROM km_content_blocks ORDER BY block_key").all();return json({content:r.results||[]});}
+  if(path==="/api/content"&&method==="POST"){
+    const b=await bodyJSON(request),key=cleanText(b.block_key,140);if(!key)return json({error:"A unique content key is required."},400);
+    await env.DB.prepare("INSERT INTO km_content_blocks(block_key,title,body_text,settings_json,is_active) VALUES(?,?,?,?,?) ON CONFLICT(block_key) DO UPDATE SET title=excluded.title,body_text=excluded.body_text,settings_json=excluded.settings_json,is_active=excluded.is_active,updated_at=CURRENT_TIMESTAMP").bind(key,cleanText(b.title,180),cleanText(b.body_text,5000),typeof b.settings_json==="string"?b.settings_json:JSON.stringify(b.settings_json||{}),b.is_active===false?0:1).run();return json({ok:true});
+  }
+  const contentMatch=path.match(/^\/api\/content\/(\d+)$/);
+  if(contentMatch&&method==="PATCH"){
+    const b=await bodyJSON(request),id=Number(contentMatch[1]),cur=await env.DB.prepare("SELECT * FROM km_content_blocks WHERE id=?").bind(id).first();if(!cur)return json({error:"Content block not found."},404);
+    await env.DB.prepare("UPDATE km_content_blocks SET title=?,body_text=?,settings_json=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(b.title===undefined?cur.title:cleanText(b.title,180),b.body_text===undefined?cur.body_text:cleanText(b.body_text,5000),b.settings_json===undefined?cur.settings_json:(typeof b.settings_json==="string"?b.settings_json:JSON.stringify(b.settings_json)),b.is_active===undefined?cur.is_active:(b.is_active?1:0),id).run();return json({ok:true});
+  }
+  if(path==="/api/social"&&method==="GET"){const r=await env.DB.prepare("SELECT * FROM km_social_links ORDER BY sort_order,id").all();return json({socials:r.results||[]});}
+  if(path==="/api/social"&&method==="POST"){
+    const b=await bodyJSON(request),platform=cleanText(b.platform,60),url=cleanText(b.url,1000);if(!platform||!/^https:\/\//i.test(url))return json({error:"Platform and a secure HTTPS URL are required."},400);
+    const r=await env.DB.prepare("INSERT INTO km_social_links(platform,label,url,icon_key,sort_order,is_active) VALUES(?,?,?,?,?,?)").bind(platform,cleanText(b.label,100),url,cleanText(b.icon_key,60),Number(b.sort_order)||0,b.is_active===false?0:1).run();return json({ok:true,id:r.meta?.last_row_id});
+  }
+  const socialMatch=path.match(/^\/api\/social\/(\d+)$/);
+  if(socialMatch&&method==="PATCH"){
+    const b=await bodyJSON(request),id=Number(socialMatch[1]),cur=await env.DB.prepare("SELECT * FROM km_social_links WHERE id=?").bind(id).first();if(!cur)return json({error:"Social link not found."},404);
+    const url=b.url===undefined?cur.url:cleanText(b.url,1000);if(!/^https:\/\//i.test(url))return json({error:"Social links must use HTTPS."},400);
+    await env.DB.prepare("UPDATE km_social_links SET platform=?,label=?,url=?,icon_key=?,sort_order=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(b.platform===undefined?cur.platform:cleanText(b.platform,60),b.label===undefined?cur.label:cleanText(b.label,100),url,b.icon_key===undefined?cur.icon_key:cleanText(b.icon_key,60),b.sort_order===undefined?cur.sort_order:Number(b.sort_order)||0,b.is_active===undefined?cur.is_active:(b.is_active?1:0),id).run();return json({ok:true});
+  }
+  if(socialMatch&&method==="DELETE"){await env.DB.prepare("DELETE FROM km_social_links WHERE id=?").bind(Number(socialMatch[1])).run();return json({ok:true});}
+  if(path==="/api/media"&&method==="GET"){const r=await env.DB.prepare("SELECT * FROM km_media_assets ORDER BY id DESC LIMIT 300").all();return json({media:r.results||[]});}
+  if(path==="/api/media"&&method==="POST"){
+    const b=await bodyJSON(request),url=cleanText(b.asset_url,2000),type=b.asset_type==="video"?"video":"image";if(!/^https:\/\//i.test(url))return json({error:"Media must use a secure HTTPS URL."},400);
+    const r=await env.DB.prepare("INSERT INTO km_media_assets(title,asset_type,asset_url,alt_text) VALUES(?,?,?,?)").bind(cleanText(b.title,180),type,url,cleanText(b.alt_text,300)).run();return json({ok:true,id:r.meta?.last_row_id});
+  }
+  const mediaMatch=path.match(/^\/api\/media\/(\d+)$/);
+  if(mediaMatch&&method==="DELETE"){await env.DB.prepare("DELETE FROM km_media_assets WHERE id=?").bind(Number(mediaMatch[1])).run();return json({ok:true});}
+  if(path==="/api/site-settings"&&method==="GET"){const r=await env.DB.prepare("SELECT setting_key,setting_value,updated_at FROM km_site_settings ORDER BY setting_key").all();return json({settings:r.results||[]});}
+  if(path==="/api/site-settings"&&method==="PUT"){
+    const b=await bodyJSON(request);const entries=Object.entries(b||{}).slice(0,100);
+    for(const [key,value] of entries){if(!/^[a-zA-Z0-9_.-]{1,120}$/.test(key))continue;const v=typeof value==="string"?value:JSON.stringify(value);await env.DB.prepare("INSERT INTO km_site_settings(setting_key,setting_value) VALUES(?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=CURRENT_TIMESTAMP").bind(key,String(v).slice(0,10000)).run();}
+    return json({ok:true});
+  }
   return json({ error: "API route not found." }, 404);
 }
 __name(api, "api");
