@@ -113,8 +113,16 @@ function cookieHeader(value, maxAge) {
 }
 __name(cookieHeader, "cookieHeader");
 function checkOrigin(request) {
- const origin=request.headers.get("Origin");if(!origin)return false;
- try{const parsed=new URL(origin),own=new URL(request.url);return parsed.host===own.host&&parsed.protocol===own.protocol;}catch{return false;}
+ const own=new URL(request.url);
+ const origin=request.headers.get("Origin");
+ if(origin){
+  try{const parsed=new URL(origin);return parsed.host===own.host&&parsed.protocol===own.protocol;}catch{return false;}
+ }
+ const referer=request.headers.get("Referer");
+ if(referer){
+  try{const parsed=new URL(referer);return parsed.host===own.host&&parsed.protocol===own.protocol;}catch{return false;}
+ }
+ return request.headers.get("Sec-Fetch-Site")==="same-origin";
 }
 __name(checkOrigin, "checkOrigin");
 async function bodyJSON(request) {
@@ -924,6 +932,7 @@ function toast(message){
 
 async function api(path,options={}){
   const response=await fetch(path,{
+    credentials:'same-origin',
     ...options,
     headers:{
       ...(options.body?{'Content-Type':'application/json'}:{}),
@@ -962,6 +971,7 @@ async function login(){
       method:'POST',
       body:JSON.stringify({password:$('loginPassword').value})
     });
+    await api('/api/me');
     $('loginPassword').value='';
     showApp();
     await loadAll();
