@@ -660,6 +660,7 @@ tr:last-child td{border-bottom:0}
     </div>
     <button class="btn" id="loginBtn">ENTER COMMAND CENTER</button>
     <div class="error" id="loginError"></div>
+<div id="loginDiagnostics" role="status" aria-live="polite" style="margin-top:14px;padding:10px 12px;border:1px solid rgba(201,169,110,.45);border-radius:8px;background:rgba(8,20,39,.92);color:#dce8f7;font:12px/1.5 system-ui"><strong style="color:#d6b77a">LOGIN DIAGNOSTICS</strong><div id="loginDiagnosticStatus" style="margin-top:5px">Waiting for page diagnostics…</div></div>
     <div class="muted" style="text-align:center;font-size:10px;margin-top:18px">SECURE PRIVATE ACCESS \xB7 CRAFT FOR KINGS</div>
   </div>
 </div>
