@@ -1,6 +1,8 @@
-
 worker.js
 wrangler.jsonc
 KINGSMADE_website.zip
 .git/
 .github/
+.dev.vars
+.env
+.env.*
