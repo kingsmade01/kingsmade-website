@@ -915,6 +915,39 @@ tr:last-child td{border-bottom:0}
 <div id="toast" class="toast hidden"></div>
 
 <script>
+(function(){
+  var status=document.getElementById('loginDiagnosticStatus');
+  function report(message){if(status)status.textContent=message;}
+  report('Page diagnostics loaded. Waiting for your tap.');
+  var button=document.getElementById('loginBtn');
+  if(button)button.addEventListener('click',function(){report('Button tap detected. Waiting for login request…');},true);
+  window.addEventListener('error',function(event){report('Browser script error: '+String(event.message||'Unknown error').slice(0,180));});
+  window.addEventListener('unhandledrejection',function(event){
+    var reason=event.reason&&event.reason.message?event.reason.message:String(event.reason||'Unknown rejection');
+    report('Browser async error: '+reason.slice(0,180));
+  });
+  var originalFetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=typeof input==='string'?input:(input&&input.url)||'';
+    if(url.indexOf('/api/login')!==-1)report('Login request sent. Waiting for Cloudflare…');
+    return originalFetch(input,init).then(function(response){
+      if(url.indexOf('/api/login')!==-1){
+        var statusText='Server response: HTTP '+response.status;
+        response.clone().json().then(function(data){
+          if(data&&data.error)statusText+=' — '+String(data.error).slice(0,180);
+          report(statusText);
+        }).catch(function(){report(statusText+' (response was not JSON)');});
+      }
+      return response;
+    }).catch(function(error){
+      if(url.indexOf('/api/login')!==-1)report('Network/fetch error: '+String(error&&error.message||error).slice(0,180));
+      throw error;
+    });
+  };
+})();
+<\\/script>
+
+<script>
 const $=id=>document.getElementById(id);
 let state={products:[],orders:[],customers:[],complaints:[],expenses:[],inventory:{products:[],movements:[]},dashboard:null,fx:null,page:'overview'};
 let cmsState={categories:[],heroes:[],content:[],socials:[],media:[],settings:[]};
