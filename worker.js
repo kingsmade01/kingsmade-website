@@ -1684,6 +1684,29 @@ function editSocial(id){
     '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
   $('editSocialForm').addEventListener('submit',async e=>{e.preventDefault();try{const b=Object.fromEntries(new FormData(e.target));b.sort_order=Number(b.sort_order)||0;b.is_active=b.is_active==='1';await api('/api/social/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Social platform updated.');}catch(err){toast(err.message);}});
 }
+function editContent(id){
+  const c=cmsState.content.find(x=>x.id===id);if(!c)return;
+  modal('Edit website content','<form id="editContentForm"><div class="form-grid">'+
+    '<div class="field"><label>Content key</label><input value="'+esc(c.block_key)+'" disabled></div>'+
+    '<div class="field"><label>Title</label><input name="title" value="'+esc(c.title)+'"></div>'+
+    '<div class="field span2"><label>Text / copy</label><textarea name="body_text" rows="5">'+esc(c.body_text)+'</textarea></div>'+
+    '<div class="field span2"><label>Settings JSON</label><textarea name="settings_json" rows="4">'+esc(c.settings_json||'{}')+'</textarea></div>'+
+    '<div class="field"><label>Visibility</label><select name="is_active"><option value="1" '+(c.is_active?'selected':'')+'>Visible</option><option value="0" '+(!c.is_active?'selected':'')+'>Hidden</option></select></div>'+
+    '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
+  $('editContentForm').addEventListener('submit',async e=>{e.preventDefault();const b=Object.fromEntries(new FormData(e.target));try{JSON.parse(b.settings_json||'{}');b.is_active=b.is_active==='1';await api('/api/content/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Website content updated.');}catch(x){toast(x.message||'Settings must be valid JSON.');}});
+}
+function editCategory(id){
+  const c=cmsState.categories.find(x=>x.id===id);if(!c)return;
+  modal('Edit category','<form id="editCategoryForm"><div class="form-grid">'+
+    '<div class="field"><label>Name</label><input name="name" required value="'+esc(c.name)+'"></div>'+
+    '<div class="field"><label>URL slug</label><input name="slug" required value="'+esc(c.slug)+'"></div>'+
+    '<div class="field span2"><label>Description</label><textarea name="description" rows="3">'+esc(c.description)+'</textarea></div>'+
+    '<div class="field span2"><label>Cover image URL</label><input name="cover_image_url" type="url" value="'+esc(c.cover_image_url)+'"></div>'+
+    '<div class="field"><label>Display order</label><input name="sort_order" type="number" value="'+Number(c.sort_order||0)+'"></div>'+
+    '<div class="field"><label>Visibility</label><select name="is_active"><option value="1" '+(c.is_active?'selected':'')+'>Visible</option><option value="0" '+(!c.is_active?'selected':'')+'>Hidden</option></select></div>'+
+    '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
+  $('editCategoryForm').addEventListener('submit',async e=>{e.preventDefault();const b=Object.fromEntries(new FormData(e.target));b.is_active=b.is_active==='1';try{await api('/api/categories/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Category updated.');}catch(x){toast(x.message);}});
+}
 async function duplicateHero(id){
   const h=cmsState.heroes.find(x=>x.id===id);if(!h)return;
   try{
@@ -1696,7 +1719,7 @@ async function duplicateHero(id){
 function renderCmsPage(page){
   if(page==='categories')$('categoriesTable').innerHTML=cmsRows(['CATEGORY','SLUG','PARENT','ORDER','STATUS','ACTION'],cmsState.categories.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.slug)+'</td><td>'+esc(c.parent_id||'—')+'</td><td>'+c.sort_order+'</td><td>'+statusBadge(c.is_active?'active':'inactive')+'</td><td><button class="btn ghost small" onclick="cmsDelete(\'/api/categories/'+c.id+'\',\'category\')">Delete</button></td></tr>'));
   if(page==='hero')$('heroTable').innerHTML=cmsRows(['SLIDE','IMAGE / VIDEO','ORDER','STATUS','ACTION'],cmsState.heroes.map(h=>'<tr><td>'+esc(h.title||h.subtitle||'Untitled slide')+'</td><td>'+esc(h.video_url||h.image_url||'—')+'</td><td>'+h.sort_order+'</td><td>'+statusBadge(h.is_active?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editHero('+h.id+')">Edit</button><button class="btn ghost small" onclick="duplicateHero('+h.id+')">Duplicate</button><button class="btn ghost small" onclick="cmsDelete(\'/api/hero/'+h.id+'\',\'hero slide\')">Delete</button></div></td></tr>'));
-  if(page==='content')$('contentTable').innerHTML=cmsRows(['KEY','TITLE','TEXT','UPDATED'],cmsState.content.map(c=>'<tr><td>'+esc(c.block_key)+'</td><td>'+esc(c.title)+'</td><td>'+esc(c.body_text)+'</td><td>'+esc(c.updated_at)+'</td></tr>'));
+  if(page==='content')$('contentTable').innerHTML=cmsRows(['KEY','TITLE','TEXT','UPDATED','ACTION'],cmsState.content.map(c=>'<tr><td>'+esc(c.block_key)+'</td><td>'+esc(c.title)+'</td><td>'+esc(c.body_text)+'</td><td>'+esc(c.updated_at)+'</td></tr>'));
   if(page==='media')$('mediaTable').innerHTML=cmsRows(['TITLE','TYPE','URL','ALT TEXT','ACTION'],cmsState.media.map(m=>'<tr><td>'+esc(m.title)+'</td><td>'+esc(m.asset_type)+'</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">'+esc(m.asset_url)+'</td><td>'+esc(m.alt_text)+'</td><td><button class="btn ghost small" onclick="cmsDelete(\'/api/media/'+m.id+'\',\'media asset\')">Delete</button></td></tr>'));
   if(page==='social')$('socialTable').innerHTML=cmsRows(['PLATFORM','LABEL','URL','ICON','STATUS','ACTION'],cmsState.socials.map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.url)+'</td><td>'+esc(x.icon_key)+'</td><td>'+statusBadge(x.is_active?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editSocial('+x.id+')">Edit</button><button class="btn ghost small" onclick="cmsDelete(\'/api/social/'+x.id+'\',\'social link\')">Delete</button></div></td></tr>'));
   if(page==='appearance'||page==='checkout'){
