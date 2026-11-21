@@ -877,6 +877,10 @@ body::after{background-image:
         <div class="field"><label>Desktop image URL</label><input id="heroImage" type="url"></div>
         <div class="field"><label>Mobile image URL</label><input id="heroMobileImage" type="url"></div>
         <div class="field"><label>Video URL</label><input id="heroVideo" type="url"></div>
+        <div class="field"><label>Video autoplay</label><select id="heroAutoplay"><option value="1">On</option><option value="0">Off</option></select></div>
+        <div class="field"><label>Loop video</label><select id="heroLoop"><option value="1">On</option><option value="0">Off</option></select></div>
+        <div class="field"><label>Media position</label><select id="heroPosition"><option value="center center">Center</option><option value="center top">Top</option><option value="center bottom">Bottom</option><option value="left center">Left</option><option value="right center">Right</option></select></div>
+        <div class="field"><label>Overlay opacity (0–1)</label><input id="heroOpacity" type="number" min="0" max="1" step="0.05" value="0.68"></div>
         <div class="field"><label>Button text</label><input id="heroButton" maxlength="100"></div>
         <div class="field"><label>Button destination</label><input id="heroButtonUrl" type="url"></div>
         <div class="field"><label>Display order</label><input id="heroOrder" type="number" value="0"></div>
@@ -1657,6 +1661,10 @@ function editHero(id){
     '<div class="field"><label>Desktop image URL</label><input name="image_url" type="url" value="'+esc(h.image_url)+'"></div>'+
     '<div class="field"><label>Mobile image URL</label><input name="mobile_image_url" type="url" value="'+esc(h.mobile_image_url)+'"></div>'+
     '<div class="field"><label>Video URL</label><input name="video_url" type="url" value="'+esc(h.video_url)+'"></div>'+
+    '<div class="field"><label>Video autoplay</label><select name="video_autoplay"><option value="1" '+(h.video_autoplay?'selected':'')+'>On</option><option value="0" '+(!h.video_autoplay?'selected':'')+'>Off</option></select></div>'+
+    '<div class="field"><label>Loop video</label><select name="video_loop"><option value="1" '+(h.video_loop?'selected':'')+'>On</option><option value="0" '+(!h.video_loop?'selected':'')+'>Off</option></select></div>'+
+    '<div class="field"><label>Media position</label><select name="media_position"><option value="center center" '+(h.media_position==='center center'?'selected':'')+'>Center</option><option value="center top" '+(h.media_position==='center top'?'selected':'')+'>Top</option><option value="center bottom" '+(h.media_position==='center bottom'?'selected':'')+'>Bottom</option><option value="left center" '+(h.media_position==='left center'?'selected':'')+'>Left</option><option value="right center" '+(h.media_position==='right center'?'selected':'')+'>Right</option></select></div>'+
+    '<div class="field"><label>Overlay opacity (0–1)</label><input name="overlay_opacity" type="number" min="0" max="1" step="0.05" value="'+Number(h.overlay_opacity??0.68)+'"></div>'+
     '<div class="field"><label>Button text</label><input name="button_text" value="'+esc(h.button_text)+'"></div>'+
     '<div class="field"><label>Button destination</label><input name="button_url" type="url" value="'+esc(h.button_url)+'"></div>'+
     '<div class="field"><label>Display order</label><input name="sort_order" type="number" value="'+Number(h.sort_order||0)+'"></div>'+
@@ -1676,6 +1684,15 @@ function editSocial(id){
     '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
   $('editSocialForm').addEventListener('submit',async e=>{e.preventDefault();try{const b=Object.fromEntries(new FormData(e.target));b.sort_order=Number(b.sort_order)||0;b.is_active=b.is_active==='1';await api('/api/social/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Social platform updated.');}catch(err){toast(err.message);}});
 }
+async function duplicateHero(id){
+  const h=cmsState.heroes.find(x=>x.id===id);if(!h)return;
+  try{
+    const copy={...h,title:(h.title||"Hero slide")+" (copy)",sort_order:Math.max(0,...cmsState.heroes.map(x=>Number(x.sort_order)||0))+1,is_active:false};
+    delete copy.id;delete copy.created_at;delete copy.updated_at;
+    await api('/api/hero',{method:'POST',body:JSON.stringify(copy)});
+    await cmsRefresh();toast('Draft copy created. Review it before making it visible.');
+  }catch(e){toast(e.message);}
+}
 function renderCmsPage(page){
   if(page==='categories')$('categoriesTable').innerHTML=cmsRows(['CATEGORY','SLUG','PARENT','ORDER','STATUS','ACTION'],cmsState.categories.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.slug)+'</td><td>'+esc(c.parent_id||'—')+'</td><td>'+c.sort_order+'</td><td>'+statusBadge(c.is_active?'active':'inactive')+'</td><td><button class="btn ghost small" onclick="cmsDelete(\'/api/categories/'+c.id+'\',\'category\')">Delete</button></td></tr>'));
   if(page==='hero')$('heroTable').innerHTML=cmsRows(['SLIDE','IMAGE / VIDEO','ORDER','STATUS','ACTION'],cmsState.heroes.map(h=>'<tr><td>'+esc(h.title||h.subtitle||'Untitled slide')+'</td><td>'+esc(h.video_url||h.image_url||'—')+'</td><td>'+h.sort_order+'</td><td>'+statusBadge(h.is_active?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editHero('+h.id+')">Edit</button><button class="btn ghost small" onclick="cmsDelete(\'/api/hero/'+h.id+'\',\'hero slide\')">Delete</button></div></td></tr>'));
@@ -1689,7 +1706,7 @@ function renderCmsPage(page){
   }
 }
 $('categoryForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/categories',{method:'POST',body:JSON.stringify({name:$('catName').value,slug:$('catSlug').value,description:$('catDescription').value,cover_image_url:$('catImage').value,sort_order:Number($('catOrder').value),parent_id:$('catParent').value||null})});e.target.reset();await cmsRefresh();toast('Category created.');}catch(x){toast(x.message);}});
-$('heroForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/hero',{method:'POST',body:JSON.stringify({title:$('heroTitle').value,subtitle:$('heroSubtitle').value,body_text:$('heroBody').value,image_url:$('heroImage').value,mobile_image_url:$('heroMobileImage').value,video_url:$('heroVideo').value,button_text:$('heroButton').value,button_url:$('heroButtonUrl').value,sort_order:Number($('heroOrder').value)})});e.target.reset();await cmsRefresh();toast('Hero slide added.');}catch(x){toast(x.message);}});
+$('heroForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/hero',{method:'POST',body:JSON.stringify({title:$('heroTitle').value,subtitle:$('heroSubtitle').value,body_text:$('heroBody').value,image_url:$('heroImage').value,mobile_image_url:$('heroMobileImage').value,video_url:$('heroVideo').value,video_autoplay:$('heroAutoplay').value==='1',video_loop:$('heroLoop').value==='1',media_position:$('heroPosition').value,overlay_opacity:Number($('heroOpacity').value),button_text:$('heroButton').value,button_url:$('heroButtonUrl').value,sort_order:Number($('heroOrder').value)})});e.target.reset();await cmsRefresh();toast('Hero slide added.');}catch(x){toast(x.message);}});
 $('contentForm').addEventListener('submit',async e=>{e.preventDefault();let settings={};try{settings=JSON.parse($('contentSettings').value||'{}')}catch{toast('Settings must be valid JSON.');return;}try{await api('/api/content',{method:'POST',body:JSON.stringify({block_key:$('contentKey').value,title:$('contentTitle').value,body_text:$('contentBody').value,settings_json:settings})});e.target.reset();await cmsRefresh();toast('Content block saved.');}catch(x){toast(x.message);}});
 $('mediaForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/media',{method:'POST',body:JSON.stringify({title:$('mediaTitle').value,asset_type:$('mediaType').value,asset_url:$('mediaUrl').value,alt_text:$('mediaAlt').value})});e.target.reset();await cmsRefresh();toast('Media asset added.');}catch(x){toast(x.message);}});
 $('socialForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/social',{method:'POST',body:JSON.stringify({platform:$('socialPlatform').value,label:$('socialLabel').value,url:$('socialUrl').value,icon_key:$('socialIcon').value,sort_order:Number($('socialOrder').value)})});e.target.reset();await cmsRefresh();toast('Social platform added.');}catch(x){toast(x.message);}});
