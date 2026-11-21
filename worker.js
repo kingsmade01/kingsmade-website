@@ -682,8 +682,8 @@ body::after{background-image:
 .sidebar{background:linear-gradient(180deg,rgba(2,10,26,.98),rgba(4,19,40,.96));border-right-color:rgba(200,173,120,.42);box-shadow:12px 0 40px rgba(0,0,0,.18)}
 .nav button.active{box-shadow:0 0 24px rgba(200,173,120,.24),inset 0 1px rgba(255,255,255,.4)}
 .rate-pill{background:rgba(5,22,46,.72);border-color:rgba(200,173,120,.55)}
-.mobile-signout{display:none}
-@media(max-width:720px){.mobile-signout{display:inline-flex;position:fixed;right:14px;bottom:14px;z-index:30;box-shadow:0 8px 28px rgba(0,0,0,.5)}.main{padding-bottom:88px}}
+.mobile-signout{display:inline-flex;position:fixed;right:24px;bottom:22px;z-index:30;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+@media(max-width:720px){.mobile-signout{right:14px;bottom:14px}.main{padding-bottom:88px}}
 </style>
 </head>
 <body>
