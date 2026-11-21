@@ -212,6 +212,23 @@ async function api(request, env, url) {
       exchange_rate_provider_configured: Boolean(env.FXAPI_KEY)
     });
   }
+  // Public, read-only storefront content. Only active customer-facing records are exposed.
+  if (path === "/api/storefront" && method === "GET") {
+    const [heroes,categories,content,socials,settings] = await Promise.all([
+      env.DB.prepare("SELECT id,title,subtitle,body_text,image_url,mobile_image_url,video_url,button_text,button_url,sort_order FROM km_hero_sections WHERE is_active=1 ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT id,name,slug,description,cover_image_url,sort_order FROM km_categories WHERE is_active=1 ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT block_key,title,body_text,settings_json FROM km_content_blocks WHERE is_active=1 ORDER BY block_key").all(),
+      env.DB.prepare("SELECT platform,label,url,icon_key,sort_order FROM km_social_links WHERE is_active=1 ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT setting_key,setting_value FROM km_site_settings ORDER BY setting_key").all()
+    ]);
+    return json({
+      heroes:heroes.results||[],
+      categories:categories.results||[],
+      content:content.results||[],
+      socials:socials.results||[],
+      settings:settings.results||[]
+    },200,{"Cache-Control":"public, max-age=60, stale-while-revalidate=300"});
+  }
   if (path === "/api/login" && method === "POST") {
     if(!checkOrigin(request))return json({error:"Request origin rejected."},403);
     if(!env.ADMIN_PASSWORD||!env.SESSION_SECRET||env.SESSION_SECRET.length<32)return json({error:"Admin secrets are not configured correctly."},503);
