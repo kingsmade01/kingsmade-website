@@ -215,7 +215,7 @@ async function api(request, env, url) {
   // Public, read-only storefront content. Only active customer-facing records are exposed.
   if (path === "/api/storefront" && method === "GET") {
     const [heroes,categories,content,socials,settings] = await Promise.all([
-      env.DB.prepare("SELECT id,title,subtitle,body_text,image_url,mobile_image_url,video_url,button_text,button_url,sort_order FROM km_hero_sections WHERE is_active=1 ORDER BY sort_order,id").all(),
+      env.DB.prepare("SELECT id,title,subtitle,body_text,image_url,mobile_image_url,video_url,button_text,button_url,sort_order,video_autoplay,video_loop,overlay_opacity,media_position FROM km_hero_sections WHERE is_active=1 ORDER BY sort_order,id").all(),
       env.DB.prepare("SELECT id,name,slug,description,cover_image_url,sort_order FROM km_categories WHERE is_active=1 ORDER BY sort_order,id").all(),
       env.DB.prepare("SELECT block_key,title,body_text,settings_json FROM km_content_blocks WHERE is_active=1 ORDER BY block_key").all(),
       env.DB.prepare("SELECT platform,label,url,icon_key,sort_order FROM km_social_links WHERE is_active=1 ORDER BY sort_order,id").all(),
@@ -518,14 +518,14 @@ async function api(request, env, url) {
   if(categoryMatch&&method==="DELETE"){await env.DB.prepare("DELETE FROM km_categories WHERE id=?").bind(Number(categoryMatch[1])).run();return json({ok:true});}
   if(path==="/api/hero"&&method==="GET"){const r=await env.DB.prepare("SELECT * FROM km_hero_sections ORDER BY sort_order,id").all();return json({heroes:r.results||[]});}
   if(path==="/api/hero"&&method==="POST"){
-    const b=await bodyJSON(request);const r=await env.DB.prepare("INSERT INTO km_hero_sections(title,subtitle,body_text,image_url,mobile_image_url,video_url,button_text,button_url,sort_order,is_active) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(cleanText(b.title,180),cleanText(b.subtitle,300),cleanText(b.body_text,3000),cleanText(b.image_url,2000),cleanText(b.mobile_image_url,2000),cleanText(b.video_url,2000),cleanText(b.button_text,100),cleanText(b.button_url,1000),Number(b.sort_order)||0,b.is_active===false?0:1).run();return json({ok:true,id:r.meta?.last_row_id});
+    const b=await bodyJSON(request);const r=await env.DB.prepare("INSERT INTO km_hero_sections(title,subtitle,body_text,image_url,mobile_image_url,video_url,button_text,button_url,sort_order,is_active,video_autoplay,video_loop,overlay_opacity,media_position) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(cleanText(b.title,180),cleanText(b.subtitle,300),cleanText(b.body_text,3000),cleanText(b.image_url,2000),cleanText(b.mobile_image_url,2000),cleanText(b.video_url,2000),cleanText(b.button_text,100),cleanText(b.button_url,1000),Number(b.sort_order)||0,b.is_active===false?0:1,b.video_autoplay===false?0:1,b.video_loop===false?0:1,Math.max(0,Math.min(1,Number(b.overlay_opacity??0.68))),cleanText(b.media_position||"center center",60)).run();return json({ok:true,id:r.meta?.last_row_id});
   }
   const heroMatch=path.match(/^\/api\/hero\/(\d+)$/);
   if(heroMatch&&method==="PATCH"){
     const b=await bodyJSON(request),id=Number(heroMatch[1]),cur=await env.DB.prepare("SELECT * FROM km_hero_sections WHERE id=?").bind(id).first();if(!cur)return json({error:"Hero slide not found."},404);
-    const fields=["title","subtitle","body_text","image_url","mobile_image_url","video_url","button_text","button_url","sort_order","is_active"];
-    const values=fields.map(k=>b[k]===undefined?cur[k]:(k==="sort_order"?Number(b[k])||0:k==="is_active"?(b[k]?1:0):cleanText(b[k],k==="body_text"?3000:2000)));
-    await env.DB.prepare("UPDATE km_hero_sections SET title=?,subtitle=?,body_text=?,image_url=?,mobile_image_url=?,video_url=?,button_text=?,button_url=?,sort_order=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(...values,id).run();return json({ok:true});
+    const fields=["title","subtitle","body_text","image_url","mobile_image_url","video_url","button_text","button_url","sort_order","is_active","video_autoplay","video_loop","overlay_opacity","media_position"];
+    const values=fields.map(k=>b[k]===undefined?cur[k]:(k==="sort_order"?Number(b[k])||0:(k==="is_active"||k==="video_autoplay"||k==="video_loop")?(b[k]?1:0):k==="overlay_opacity"?Math.max(0,Math.min(1,Number(b[k]))):cleanText(b[k],k==="body_text"?3000:2000)));
+    await env.DB.prepare("UPDATE km_hero_sections SET title=?,subtitle=?,body_text=?,image_url=?,mobile_image_url=?,video_url=?,button_text=?,button_url=?,sort_order=?,is_active=?,video_autoplay=?,video_loop=?,overlay_opacity=?,media_position=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(...values,id).run();return json({ok:true});
   }
   if(heroMatch&&method==="DELETE"){await env.DB.prepare("DELETE FROM km_hero_sections WHERE id=?").bind(Number(heroMatch[1])).run();return json({ok:true});}
   if(path==="/api/content"&&method==="GET"){const r=await env.DB.prepare("SELECT * FROM km_content_blocks ORDER BY block_key").all();return json({content:r.results||[]});}
