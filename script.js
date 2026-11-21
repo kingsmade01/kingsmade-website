@@ -440,14 +440,14 @@ function renderManagedHero(slides){
     if(slide.video_url){
       const video=document.createElement("video");
       video.className="managed-hero-video";
-      video.src=slide.video_url;video.autoplay=true;video.muted=true;
-      video.loop=true;video.playsInline=true;video.setAttribute("aria-hidden","true");
-      video.style.cssText="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.68";
+      video.src=slide.video_url;video.autoplay=slide.video_autoplay!==0;video.muted=true;
+      video.loop=slide.video_loop!==0;video.playsInline=true;video.setAttribute("aria-hidden","true");
+      video.style.cssText="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:"+(slide.media_position||"center center")+";opacity:"+Math.max(0,Math.min(1,Number(slide.overlay_opacity??0.68)));
       hero.insertBefore(video,hero.querySelector(".hero-overlay"));
       if(image)image.style.display="none";
       video.play().catch(()=>{});
     }else{
-      if(image){image.style.display="block";image.style.backgroundImage="url("+JSON.stringify(slide.image_url)+")";}
+      if(image){image.style.display="block";image.style.backgroundImage="url("+JSON.stringify(slide.image_url)+")";image.style.backgroundPosition=slide.media_position||"center center";if(slide.mobile_image_url){const mobile=window.matchMedia("(max-width: 700px)").matches;image.style.backgroundImage="url("+JSON.stringify(mobile?slide.mobile_image_url:slide.image_url)+")";}}
     }
     const copy=hero.querySelector(".hero-copy");
     if(copy){
