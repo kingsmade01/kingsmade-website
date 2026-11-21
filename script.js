@@ -399,22 +399,110 @@ function setCategory(category) {
   renderProducts();
 }
 
-function initializeSocialLinks() {
+function initializeSocialLinks(customLinks) {
+  const container=document.querySelector(".social-links");
+  if(Array.isArray(customLinks)&&customLinks.length&&container){
+    container.replaceChildren();
+    customLinks.forEach(link=>{
+      if(!link.url)return;
+      const a=document.createElement("a");
+      a.href=link.url;a.target="_blank";a.rel="noopener noreferrer";
+      a.textContent=link.label||link.platform||"Social";
+      container.appendChild(a);
+    });
+    return;
+  }
   const links = [
     ["instagramLink", CONFIG.instagram],
     ["facebookLink", CONFIG.facebook],
     ["xLink", CONFIG.x]
   ];
-
   links.forEach(([id, url]) => {
     const element = $(id);
-
-    if (url) {
-      element.href = url;
-    } else {
-      element.style.display = "none";
-    }
+    if (!element) return;
+    if (url) element.href = url;
+    else element.style.display = "none";
   });
+}
+
+function renderManagedHero(slides){
+  const hero=document.querySelector(".hero");
+  if(!hero||!Array.isArray(slides)||!slides.length)return;
+  const active=slides.filter(x=>x&&x.image_url||x&&x.video_url);
+  if(!active.length)return;
+  let current=0,timer=null;
+  const show=index=>{
+    current=(index+active.length)%active.length;
+    const slide=active[current];
+    const image=hero.querySelector(".hero-image");
+    const oldVideo=hero.querySelector(".managed-hero-video");
+    if(oldVideo)oldVideo.remove();
+    if(slide.video_url){
+      const video=document.createElement("video");
+      video.className="managed-hero-video";
+      video.src=slide.video_url;video.autoplay=true;video.muted=true;
+      video.loop=true;video.playsInline=true;video.setAttribute("aria-hidden","true");
+      video.style.cssText="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.68";
+      hero.insertBefore(video,hero.querySelector(".hero-overlay"));
+      if(image)image.style.display="none";
+      video.play().catch(()=>{});
+    }else{
+      if(image){image.style.display="block";image.style.backgroundImage="url("+JSON.stringify(slide.image_url)+")";}
+    }
+    const copy=hero.querySelector(".hero-copy");
+    if(copy){
+      const set=(selector,value)=>{const el=copy.querySelector(selector);if(el)el.textContent=value||"";};
+      set(".hero-overline",slide.subtitle||"");
+      set("h1",slide.title||"KINGSMADE");
+      set(".hero-slogan",slide.body_text||"");
+      const button=copy.querySelector(".hero-button");
+      if(button){button.textContent=slide.button_text||"DISCOVER THE COLLECTION";button.href=slide.button_url||"#collection";}
+      let desc=copy.querySelector(".hero-description");
+      if(!desc){desc=document.createElement("p");desc.className="hero-description";copy.insertBefore(desc,button);}
+      desc.textContent=slide.body_text||"";
+    }
+  };
+  show(0);
+  if(active.length>1){
+    const nav=document.createElement("div");
+    nav.className="managed-hero-dots";
+    nav.style.cssText="position:absolute;z-index:5;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:9px";
+    active.forEach((_,i)=>{
+      const dot=document.createElement("button");
+      dot.type="button";dot.setAttribute("aria-label","Show hero slide "+(i+1));
+      dot.style.cssText="width:9px;height:9px;border-radius:50%;border:1px solid #fff;background:"+(i===0?"#c8ad78":"transparent")+";padding:0";
+      dot.addEventListener("click",()=>{show(i);[...nav.children].forEach((d,j)=>d.style.background=j===i?"#c8ad78":"transparent");});
+      nav.appendChild(dot);
+    });
+    hero.appendChild(nav);
+    timer=setInterval(()=>{show(current+1);[...nav.children].forEach((d,j)=>d.style.background=j===current?"#c8ad78":"transparent");},7000);
+  }
+}
+
+async function initializeCmsStorefront(){
+  try{
+    const response=await fetch("/api/storefront",{headers:{"Accept":"application/json"}});
+    if(!response.ok)return;
+    const data=await response.json();
+    renderManagedHero(data.heroes||[]);
+    initializeSocialLinks(data.socials||[]);
+    if(Array.isArray(data.categories)&&data.categories.length){
+      const filters=document.querySelector(".filters");
+      if(filters){
+        filters.replaceChildren();
+        data.categories.forEach(category=>{
+          const button=document.createElement("button");
+          button.type="button";button.className="filter";
+          button.dataset.filter=category.slug;button.textContent=category.name;
+          button.addEventListener("click",()=>setCategory(category.slug));
+          filters.appendChild(button);
+        });
+      }
+    }
+  }catch(error){
+    console.warn("KINGSMADE managed content unavailable; using storefront defaults.",error);
+    initializeSocialLinks();
+  }
 }
 
 /* EVENT LISTENERS */
@@ -490,6 +578,6 @@ $("checkoutButton").addEventListener("click", () => {
 
 /* INITIALIZE */
 
-initializeSocialLinks();
+initializeCmsStorefront();
 renderCart();
 loadProducts();
