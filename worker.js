@@ -1670,7 +1670,7 @@ function editHero(id){
     '<div class="field"><label>Display order</label><input name="sort_order" type="number" value="'+Number(h.sort_order||0)+'"></div>'+
     '<div class="field"><label>Visibility</label><select name="is_active"><option value="1" '+(h.is_active?'selected':'')+'>Visible</option><option value="0" '+(!h.is_active?'selected':'')+'>Hidden</option></select></div>'+
     '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
-  $('editHeroForm').addEventListener('submit',async e=>{e.preventDefault();try{const b=Object.fromEntries(new FormData(e.target));b.sort_order=Number(b.sort_order)||0;b.is_active=b.is_active==='1';await api('/api/hero/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Hero slide updated.');}catch(x){toast(x.message);}});
+  $('editHeroForm').addEventListener('submit',async e=>{e.preventDefault();try{const b=Object.fromEntries(new FormData(e.target));b.sort_order=Number(b.sort_order)||0;b.is_active=b.is_active==='1';b.video_autoplay=b.video_autoplay==='1';b.video_loop=b.video_loop==='1';b.overlay_opacity=Number(b.overlay_opacity);await api('/api/hero/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Hero slide updated.');}catch(x){toast(x.message);}});
 }
 function editSocial(id){
   const x=cmsState.socials.find(v=>v.id===id);if(!x)return;
