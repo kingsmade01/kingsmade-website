@@ -662,6 +662,28 @@ tr:last-child td{border-bottom:0}
 .profit-negative{color:var(--red)}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two-col{grid-template-columns:1fr}.main{padding:22px 20px 50px}}
 @media(max-width:720px){.sidebar{transform:translateX(-100%);transition:transform .2s;width:260px;box-shadow:15px 0 35px #0008}.sidebar.open{transform:translateX(0)}.main{margin-left:0;padding:18px 14px 40px}.hamb{display:inline-flex}.topbar{align-items:flex-start}.page-title{font-size:24px}.rate-pill{display:none}.grid{gap:9px}.stat{padding:13px;min-height:102px}.stat-value{font-size:21px}.stat-label{font-size:9px}.form-grid{grid-template-columns:1fr}.span2{grid-column:auto}.login-card{padding:27px 22px}.top-actions .btn{padding:8px 10px;font-size:11px}}
+
+/* KINGSMADE reference finish: deep navy glass, blue/gold market accents */
+body::before{background-image:
+  radial-gradient(ellipse at 18% 18%,rgba(15,74,145,.38),transparent 34%),
+  linear-gradient(164deg,transparent 0 24%,rgba(200,173,120,.02) 27%,rgba(200,173,120,.72) 28%,rgba(255,225,166,.16) 29%,transparent 32% 100%),
+  linear-gradient(158deg,transparent 0 39%,rgba(14,48,91,.05) 42%,rgba(25,92,160,.45) 44%,rgba(8,27,58,.92) 49%,transparent 55% 100%),
+  radial-gradient(ellipse at 22% 70%,rgba(200,173,120,.15),transparent 35%)}
+body::after{background-image:
+  radial-gradient(ellipse at 78% 22%,rgba(12,78,160,.34),transparent 38%),
+  linear-gradient(12deg,transparent 0 34%,rgba(200,173,120,.03) 38%,rgba(200,173,120,.55) 39%,rgba(255,224,160,.12) 40%,transparent 43% 100%),
+  linear-gradient(12deg,transparent 0 50%,rgba(17,60,111,.08) 54%,rgba(24,87,157,.5) 57%,rgba(5,19,43,.95) 63%,transparent 68% 100%),
+  radial-gradient(ellipse at 72% 28%,rgba(200,173,120,.13),transparent 35%)}
+.panel{background:linear-gradient(145deg,rgba(12,31,58,.94),rgba(5,17,36,.92));border-color:rgba(89,126,171,.34);box-shadow:0 12px 34px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.035);backdrop-filter:blur(12px)}
+.stat{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(12,36,70,.96),rgba(5,19,42,.96));border-color:rgba(66,116,174,.48);box-shadow:0 10px 28px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.05)}
+.stat::after{content:"";position:absolute;right:-24px;bottom:-54px;width:150px;height:110px;border-radius:50%;filter:blur(22px);opacity:.28;pointer-events:none}
+.stat:nth-child(4n+1)::after{background:#1478e8}.stat:nth-child(4n+2)::after{background:#e6b94f}.stat:nth-child(4n+3)::after{background:#9655ef}.stat:nth-child(4n)::after{background:#21c9a2}
+.stat-value{position:relative;z-index:1}
+.sidebar{background:linear-gradient(180deg,rgba(2,10,26,.98),rgba(4,19,40,.96));border-right-color:rgba(200,173,120,.42);box-shadow:12px 0 40px rgba(0,0,0,.18)}
+.nav button.active{box-shadow:0 0 24px rgba(200,173,120,.24),inset 0 1px rgba(255,255,255,.4)}
+.rate-pill{background:rgba(5,22,46,.72);border-color:rgba(200,173,120,.55)}
+.mobile-signout{display:none}
+@media(max-width:720px){.mobile-signout{display:inline-flex;position:fixed;right:14px;bottom:14px;z-index:30;box-shadow:0 8px 28px rgba(0,0,0,.5)}.main{padding-bottom:88px}}
 </style>
 </head>
 <body>
@@ -707,7 +729,7 @@ tr:last-child td{border-bottom:0}
     </nav>
     <div class="side-bottom">
       <div class="side-user">AUTHORIZED ADMINISTRATOR</div>
-      <button class="btn ghost" id="logoutBtn" style="width:100%">Sign out \u2197</button>
+      
     </div>
   </aside>
 
@@ -926,6 +948,7 @@ tr:last-child td{border-bottom:0}
       </form></div>
     </section>
   </main>
+  <button class="btn mobile-signout" id="logoutBtn" type="button">Sign Out ↗</button>
 </div>
 
 <div id="modalRoot"></div>
