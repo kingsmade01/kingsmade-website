@@ -1608,12 +1608,40 @@ async function refreshFx(){
 function cmsRows(headers,rows){return table(headers,rows);}
 async function cmsRefresh(){cmsState=await api('/api/cms');renderCmsPage(state.page);}
 async function cmsDelete(path,label){if(!confirm('Delete this '+label+'?'))return;try{await api(path,{method:'DELETE'});await cmsRefresh();toast(label+' deleted.');}catch(e){toast(e.message);}}
+function editHero(id){
+  const h=cmsState.heroes.find(x=>x.id===id);if(!h)return;
+  modal('Edit hero slide','<form id="editHeroForm"><div class="form-grid">'+
+    '<div class="field"><label>Main heading</label><input name="title" value="'+esc(h.title)+'"></div>'+
+    '<div class="field"><label>Subheading</label><input name="subtitle" value="'+esc(h.subtitle)+'"></div>'+
+    '<div class="field span2"><label>Supporting text</label><textarea name="body_text" rows="3">'+esc(h.body_text)+'</textarea></div>'+
+    '<div class="field"><label>Desktop image URL</label><input name="image_url" type="url" value="'+esc(h.image_url)+'"></div>'+
+    '<div class="field"><label>Mobile image URL</label><input name="mobile_image_url" type="url" value="'+esc(h.mobile_image_url)+'"></div>'+
+    '<div class="field"><label>Video URL</label><input name="video_url" type="url" value="'+esc(h.video_url)+'"></div>'+
+    '<div class="field"><label>Button text</label><input name="button_text" value="'+esc(h.button_text)+'"></div>'+
+    '<div class="field"><label>Button destination</label><input name="button_url" type="url" value="'+esc(h.button_url)+'"></div>'+
+    '<div class="field"><label>Display order</label><input name="sort_order" type="number" value="'+Number(h.sort_order||0)+'"></div>'+
+    '<div class="field"><label>Visibility</label><select name="is_active"><option value="1" '+(h.is_active?'selected':'')+'>Visible</option><option value="0" '+(!h.is_active?'selected':'')+'>Hidden</option></select></div>'+
+    '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
+  $('editHeroForm').addEventListener('submit',async e=>{e.preventDefault();try{const b=Object.fromEntries(new FormData(e.target));b.sort_order=Number(b.sort_order)||0;b.is_active=b.is_active==='1';await api('/api/hero/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Hero slide updated.');}catch(x){toast(x.message);}});
+}
+function editSocial(id){
+  const x=cmsState.socials.find(v=>v.id===id);if(!x)return;
+  modal('Edit social platform','<form id="editSocialForm"><div class="form-grid">'+
+    '<div class="field"><label>Platform</label><input name="platform" required value="'+esc(x.platform)+'"></div>'+
+    '<div class="field"><label>Display label</label><input name="label" value="'+esc(x.label)+'"></div>'+
+    '<div class="field span2"><label>Profile URL (HTTPS)</label><input name="url" type="url" required value="'+esc(x.url)+'"></div>'+
+    '<div class="field"><label>Icon key</label><input name="icon_key" value="'+esc(x.icon_key)+'"></div>'+
+    '<div class="field"><label>Display order</label><input name="sort_order" type="number" value="'+Number(x.sort_order||0)+'"></div>'+
+    '<div class="field"><label>Visibility</label><select name="is_active"><option value="1" '+(x.is_active?'selected':'')+'>Visible</option><option value="0" '+(!x.is_active?'selected':'')+'>Hidden</option></select></div>'+
+    '</div><div class="form-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Save changes</button></div></form>');
+  $('editSocialForm').addEventListener('submit',async e=>{e.preventDefault();try{const b=Object.fromEntries(new FormData(e.target));b.sort_order=Number(b.sort_order)||0;b.is_active=b.is_active==='1';await api('/api/social/'+id,{method:'PATCH',body:JSON.stringify(b)});closeModal();await cmsRefresh();toast('Social platform updated.');}catch(err){toast(err.message);}});
+}
 function renderCmsPage(page){
-  if(page==='categories')$('categoriesTable').innerHTML=cmsRows(['CATEGORY','SLUG','PARENT','ORDER','STATUS','ACTION'],cmsState.categories.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.slug)+'</td><td>'+esc(c.parent_id||'—')+'</td><td>'+c.sort_order+'</td><td>'+statusBadge(c.is_active?'active':'inactive')+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/categories/'+c.id+'\',\'category\')">Delete</button></td></tr>'));
-  if(page==='hero')$('heroTable').innerHTML=cmsRows(['SLIDE','IMAGE / VIDEO','ORDER','STATUS','ACTION'],cmsState.heroes.map(h=>'<tr><td>'+esc(h.title||h.subtitle||'Untitled slide')+'</td><td>'+esc(h.image_url||h.video_url||'—')+'</td><td>'+h.sort_order+'</td><td>'+statusBadge(h.is_active?'active':'inactive')+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/hero/'+h.id+'\',\'hero slide\')">Delete</button></td></tr>'));
+  if(page==='categories')$('categoriesTable').innerHTML=cmsRows(['CATEGORY','SLUG','PARENT','ORDER','STATUS','ACTION'],cmsState.categories.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.slug)+'</td><td>'+esc(c.parent_id||'—')+'</td><td>'+c.sort_order+'</td><td>'+statusBadge(c.is_active?'active':'inactive')+'</td><td><button class="btn ghost small" onclick="cmsDelete(\'/api/categories/'+c.id+'\',\'category\')">Delete</button></td></tr>'));
+  if(page==='hero')$('heroTable').innerHTML=cmsRows(['SLIDE','IMAGE / VIDEO','ORDER','STATUS','ACTION'],cmsState.heroes.map(h=>'<tr><td>'+esc(h.title||h.subtitle||'Untitled slide')+'</td><td>'+esc(h.video_url||h.image_url||'—')+'</td><td>'+h.sort_order+'</td><td>'+statusBadge(h.is_active?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editHero('+h.id+')">Edit</button><button class="btn ghost small" onclick="cmsDelete(\'/api/hero/'+h.id+'\',\'hero slide\')">Delete</button></div></td></tr>'));
   if(page==='content')$('contentTable').innerHTML=cmsRows(['KEY','TITLE','TEXT','UPDATED'],cmsState.content.map(c=>'<tr><td>'+esc(c.block_key)+'</td><td>'+esc(c.title)+'</td><td>'+esc(c.body_text)+'</td><td>'+esc(c.updated_at)+'</td></tr>'));
-  if(page==='media')$('mediaTable').innerHTML=cmsRows(['TITLE','TYPE','URL','ALT TEXT','ACTION'],cmsState.media.map(m=>'<tr><td>'+esc(m.title)+'</td><td>'+esc(m.asset_type)+'</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">'+esc(m.asset_url)+'</td><td>'+esc(m.alt_text)+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/media/'+m.id+'\',\'media asset\')">Delete</button></td></tr>'));
-  if(page==='social')$('socialTable').innerHTML=cmsRows(['PLATFORM','LABEL','URL','ICON','STATUS','ACTION'],cmsState.socials.map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.url)+'</td><td>'+esc(x.icon_key)+'</td><td>'+statusBadge(x.is_active?'active':'inactive')+'</td><td><button class="btn ghost" onclick="cmsDelete(\'/api/social/'+x.id+'\',\'social link\')">Delete</button></td></tr>'));
+  if(page==='media')$('mediaTable').innerHTML=cmsRows(['TITLE','TYPE','URL','ALT TEXT','ACTION'],cmsState.media.map(m=>'<tr><td>'+esc(m.title)+'</td><td>'+esc(m.asset_type)+'</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">'+esc(m.asset_url)+'</td><td>'+esc(m.alt_text)+'</td><td><button class="btn ghost small" onclick="cmsDelete(\'/api/media/'+m.id+'\',\'media asset\')">Delete</button></td></tr>'));
+  if(page==='social')$('socialTable').innerHTML=cmsRows(['PLATFORM','LABEL','URL','ICON','STATUS','ACTION'],cmsState.socials.map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.url)+'</td><td>'+esc(x.icon_key)+'</td><td>'+statusBadge(x.is_active?'active':'inactive')+'</td><td><div class="actions"><button class="btn ghost small" onclick="editSocial('+x.id+')">Edit</button><button class="btn ghost small" onclick="cmsDelete(\'/api/social/'+x.id+'\',\'social link\')">Delete</button></div></td></tr>'));
   if(page==='appearance'||page==='checkout'){
     const m=new Map((cmsState.settings||[]).map(x=>[x.setting_key,x.setting_value]));
     const map=page==='appearance'?{appearancePrimary:'appearance.primary',appearanceAccent:'appearance.accent',appearanceSurface:'appearance.surface',appearanceText:'appearance.text',appearanceHeading:'appearance.heading_font',appearanceBody:'appearance.body_font'}:{checkoutHeading:'checkout.heading',checkoutIntro:'checkout.intro',checkoutSummary:'checkout.summary_heading',checkoutButton:'checkout.button_text',checkoutDelivery:'checkout.delivery_heading',checkoutContact:'checkout.contact_heading',checkoutFooter:'checkout.footer'};
